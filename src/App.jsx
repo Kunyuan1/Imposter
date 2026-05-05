@@ -1,122 +1,203 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from "react";
+import "./App.css";
+import words from "./data/words";
+import { createGame } from "./game/gameLogic";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [playerNames, setPlayerNames] = useState(["", "", "", ""]);
+  const [phase, setPhase] = useState("setup");
+  const [game, setGame] = useState(null);
+  const [clueInput, setClueInput] = useState("");
+  const [isRoleVisible, setIsRoleVisible] = useState(false);
+
+  function updatePlayerName(index, value) {
+    const newNames = [...playerNames];
+    newNames[index] = value;
+    setPlayerNames(newNames);
+  }
+
+  function addPlayer() {
+    setPlayerNames([...playerNames, ""]);
+  }
+
+  function removePlayer(index) {
+    if (playerNames.length <= 3) return;
+    setPlayerNames(playerNames.filter((_, i) => i !== index));
+  }
+
+  function startGame() {
+    const validNames = playerNames
+      .map((name) => name.trim())
+      .filter((name) => name !== "");
+
+    if (validNames.length < 3) {
+      alert("You need at least 3 players.");
+      return;
+    }
+
+    const newGame = createGame(validNames, words);
+    setGame(newGame);
+    setPhase("roleReveal");
+  }
+
+  function nextRoleReveal() {
+    const nextIndex = game.currentPlayerIndex + 1;
+
+    if (nextIndex >= game.players.length) {
+      setGame({
+        ...game,
+        currentPlayerIndex: 0,
+      });
+
+      setIsRoleVisible(false);
+      setPhase("clue");
+      return;
+    }
+
+    setGame({
+      ...game,
+      currentPlayerIndex: nextIndex,
+    });
+
+    setIsRoleVisible(false);
+  }
+
+  function submitClue() {
+    if (clueInput.trim() === "") {
+      alert("Please enter a clue.");
+      return;
+    }
+
+    const newClue = {
+      player: game.players[game.currentPlayerIndex],
+      clue: clueInput.trim(),
+    };
+
+    const updatedClues = [...game.clues, newClue];
+    const nextIndex = game.currentPlayerIndex + 1;
+
+    if (nextIndex >= game.players.length) {
+      setGame({
+        ...game,
+        clues: updatedClues,
+        currentPlayerIndex: 0,
+      });
+
+      setClueInput("");
+      setPhase("vote");
+      return;
+    }
+
+    setGame({
+      ...game,
+      clues: updatedClues,
+      currentPlayerIndex: nextIndex,
+    });
+
+    setClueInput("");
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
+    <main className="app">
+      {phase === "setup" && (
+        <section className="card">
+          <h1>Imposter</h1>
+          <p className="subtitle">Add players to start the game.</p>
+
+          <div className="player-list">
+            {playerNames.map((name, index) => (
+              <div className="player-row" key={index}>
+                <input
+                  type="text"
+                  placeholder={`Player ${index + 1}`}
+                  value={name}
+                  onChange={(e) => updatePlayerName(index, e.target.value)}
+                />
+
+                <button type="button" onClick={() => removePlayer(index)}>
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="actions">
+            <button type="button" onClick={addPlayer}>
+              Add Player
+            </button>
+
+            <button type="button" className="primary" onClick={startGame}>
+              Start Game
+            </button>
+          </div>
+        </section>
+      )}
+
+      {phase === "roleReveal" && game && (
+        <section className="card">
+          <h1>Role Reveal</h1>
+
+          <p className="subtitle">Pass the device to:</p>
+
+          <h2>{game.players[game.currentPlayerIndex]}</h2>
+
+          {!isRoleVisible ? (
+            <button
+              type="button"
+              className="primary"
+              onClick={() => setIsRoleVisible(true)}
+            >
+              Reveal My Role
+            </button>
+          ) : (
+            <>
+              {game.currentPlayerIndex === game.imposterIndex ? (
+                <p className="role imposter">You are the Imposter</p>
+              ) : (
+                <p className="role word">
+                  Your word is: <strong>{game.secretWord}</strong>
+                </p>
+              )}
+
+              <button type="button" onClick={nextRoleReveal}>
+                Hide and Pass
+              </button>
+            </>
+          )}
+        </section>
+      )}
+
+      {phase === "clue" && game && (
+        <section className="card">
+          <h1>Clue Phase</h1>
+
+          <p className="subtitle">
+            Current player:{" "}
+            <strong>{game.players[game.currentPlayerIndex]}</strong>
           </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
 
-      <div className="ticks"></div>
+          <input
+            type="text"
+            placeholder="Enter your clue"
+            value={clueInput}
+            onChange={(e) => setClueInput(e.target.value)}
+          />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+          <button type="button" className="primary" onClick={submitClue}>
+            Submit Clue
+          </button>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+          <h3>Clues so far:</h3>
+
+          {game.clues.map((item, index) => (
+            <p key={index}>
+              <strong>{item.player}:</strong> {item.clue}
+            </p>
+          ))}
+        </section>
+      )}
+    </main>
+  );
 }
 
-export default App
+export default App;
