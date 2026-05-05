@@ -2,6 +2,7 @@ import { useState } from "react";
 import "./App.css";
 import words from "./data/words";
 import { createGame } from "./game/gameLogic";
+import ClueScreen from "./components/ClueScreen";
 
 function App() {
   const [playerNames, setPlayerNames] = useState(["", "", "", ""]);
@@ -168,34 +169,13 @@ function App() {
       )}
 
       {phase === "clue" && game && (
-        <section className="card">
-          <h1>Clue Phase</h1>
-
-          <p className="subtitle">
-            Current player:{" "}
-            <strong>{game.players[game.currentPlayerIndex]}</strong>
-          </p>
-
-          <input
-            type="text"
-            placeholder="Enter your clue"
-            value={clueInput}
-            onChange={(e) => setClueInput(e.target.value)}
-          />
-
-          <button type="button" className="primary" onClick={submitClue}>
-            Submit Clue
-          </button>
-
-          <h3>Clues so far:</h3>
-
-          {game.clues.map((item, index) => (
-            <p key={index}>
-              <strong>{item.player}:</strong> {item.clue}
-            </p>
-          ))}
-        </section>
-      )}
+  <ClueScreen
+    game={game}
+    clueInput={clueInput}
+    setClueInput={setClueInput}
+    onSubmit={submitClue}
+  />
+)}
     </main>
   );
 }
