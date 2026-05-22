@@ -1,26 +1,28 @@
-import { useState } from "react";
-import "./App.css";
-import words from "./data/words";
-import { createGame, tallyVotes, getAccused } from "./game/gameLogic";
-import ClueScreen from "./components/ClueScreen";
-import VoteScreen from "./components/VoteScreen";
-import ResultScreen from "./components/ResultScreen";
-import ImposterGuessScreen from "./components/ImposterGuessScreen";
-import TallyScreen from "./components/TallyScreen";
+import React, { useState } from 'react';
+import SetupScreen from './components/SetupScreen';
+import ClueScreen from './components/ClueScreen';
+import MajorityVoteScreen from './components/MajorityVoteScreen';
+import VoteScreen from './components/VoteScreen';
+import ResultScreen from './components/ResultScreen';
+import words from './data/words';
+import './App.css';
 
 function App() {
-  const [playerNames, setPlayerNames] = useState(["", "", "", ""]);
+  // --- STATE MANAGEMENT ---
   const [phase, setPhase] = useState("setup");
-  const [game, setGame] = useState(null);
-  const [clueInput, setClueInput] = useState("");
-  const [isRoleVisible, setIsRoleVisible] = useState(false);
-  const [result, setResult] = useState(null); // stores end game result
+  const [playerNames, setPlayerNames] = useState(["", "", "", ""]);
   const [category, setCategory] = useState("");
-  const [tally, setTally] = useState({});
+  const [game, setGame] = useState(null);
+  const [isRoleVisible, setIsRoleVisible] = useState(false);
+  const [clueInput, setClueInput] = useState("");
+  const [result, setResult] = useState(null);
 
-  function updatePlayerName(index, value) {
+  const categories = Object.keys(words);
+
+  // --- SETUP PHASE FUNCTIONS ---
+  function updatePlayerName(index, name) {
     const newNames = [...playerNames];
-    newNames[index] = value;
+    newNames[index] = name;
     setPlayerNames(newNames);
   }
 
@@ -29,45 +31,51 @@ function App() {
   }
 
   function removePlayer(index) {
-    if (playerNames.length <= 3) return;
-    setPlayerNames(playerNames.filter((_, i) => i !== index));
+    const newNames = playerNames.filter((_, i) => i !== index);
+    setPlayerNames(newNames);
   }
 
   function startGame() {
-    const validNames = playerNames
-      .map((name) => name.trim())
-      .filter((name) => name !== "");
-
-    if (validNames.length < 3) {
-      alert("You need at least 3 players.");
+    const validPlayers = playerNames.filter(name => name.trim() !== "");
+    if (validPlayers.length < 3) {
+      alert("You need at least 3 agents to play!");
+      return;
+    }
+    if (!category) {
+      alert("Please choose an intel category.");
       return;
     }
 
-    if (category === "") {
-      alert("Please select a category.");
-      return;
-    }
+    const categoryWords = words[category];
+    const secretWord = categoryWords[Math.floor(Math.random() * categoryWords.length)];
+    const imposterIndex = Math.floor(Math.random() * validPlayers.length);
 
-    const newGame = createGame(validNames, words, category);
-    setGame(newGame);
-    setResult(null);
+    setGame({
+      players: validPlayers,
+      imposterIndex,
+      secretWord,
+      category,
+      currentPlayerIndex: 0,
+      clues: [],
+      votes: {}, // { voterIndex: accusedIndex }
+    });
     setPhase("roleReveal");
   }
 
+  // --- ROLE REVEAL PHASE ---
   function nextRoleReveal() {
+    setIsRoleVisible(false);
     const nextIndex = game.currentPlayerIndex + 1;
 
     if (nextIndex >= game.players.length) {
       setGame({ ...game, currentPlayerIndex: 0 });
-      setIsRoleVisible(false);
       setPhase("clue");
-      return;
+    } else {
+      setGame({ ...game, currentPlayerIndex: nextIndex });
     }
-
-    setGame({ ...game, currentPlayerIndex: nextIndex });
-    setIsRoleVisible(false);
   }
 
+  // --- CLUE PHASE ---
   function submitClue() {
     if (clueInput.trim() === "") {
       alert("Please enter a clue.");
@@ -79,102 +87,100 @@ function App() {
       clue: clueInput.trim(),
     };
 
-    const updatedClues = [...game.clues, newClue];
+    const currentClues = game.clues || [];
+    const updatedClues = [...currentClues, newClue];
     const nextIndex = game.currentPlayerIndex + 1;
 
     if (nextIndex >= game.players.length) {
-      setGame({ ...game, clues: updatedClues, currentPlayerIndex: 0 });
+      setGame({
+        ...game,
+        clues: updatedClues,
+        currentPlayerIndex: 0,
+      });
       setClueInput("");
-      setPhase("vote");
+      setPhase("majorityVote");
       return;
     }
 
-    setGame({ ...game, clues: updatedClues, currentPlayerIndex: nextIndex });
-    setClueInput("");
-  }
-
-  function handleVoteSubmit(accusedIndex) {
-    const updatedVotes = { ...game.votes, [game.currentPlayerIndex]: accusedIndex };
-    const nextIndex = game.currentPlayerIndex + 1;
-
-    if (nextIndex >= game.players.length) {
-      // All players have voted — tally up
-      const newTally = {};
-      for (const voter in updatedVotes) {
-        const accused = updatedVotes[voter];
-        newTally[accused] = (newTally[accused] || 0) + 1;
-      }
-      setTally(newTally);
-      setGame({ ...game, votes: updatedVotes, currentPlayerIndex: 0 });
-      setPhase("tally");
-    } else {
-      setGame({ ...game, votes: updatedVotes, currentPlayerIndex: nextIndex });
-    }
-  }
-
-  function handleTallyContinue() {
-    const maxVotes = Math.max(...Object.values(tally));
-    const leaders = Object.keys(tally).filter(
-      (index) => tally[index] === maxVotes
-    );
-
-    if (leaders.length > 1) {
-      // Tie — restart clue phase
-      restartCluePhase();
-      return;
-    }
-
-    const accusedIndex = Number(leaders[0]);
-    const accusedIsImposter = accusedIndex === game.imposterIndex;
-
-    if (accusedIsImposter) {
-      setGame({ ...game, currentPlayerIndex: accusedIndex });
-      setPhase("imposterGuess");
-    } else {
-      setResult({
-        accusedIndex,
-        accusedName: game.players[accusedIndex],
-        accusedIsImposter: false,
-        secretWord: game.secretWord,
-        imposterName: game.players[game.imposterIndex],
-        imposterGuessedCorrectly: null,
-      });
-      setPhase("result");
-    }
-  }
-
-  function handleImposterGuess(guess) {
-    const correct = guess.trim().toLowerCase() === game.secretWord.toLowerCase();
-
-    setResult({
-      accusedIndex: game.imposterIndex,
-      accusedName: game.players[game.imposterIndex],
-      accusedIsImposter: true,
-        secretWord: game.secretWord,
-        imposterName: game.players[game.imposterIndex],
-        imposterGuessedCorrectly: correct,
-      });
-
-      setPhase("result");
-    }
-
-  function handleTie() {
-    // Called from ResultScreen if it was a tie — restart clue phase
-    restartCluePhase();
-  }
-
-  function restartCluePhase() {
     setGame({
       ...game,
-      clues: [],
-      currentPlayerIndex: 0,
-      votes: {},
+      clues: updatedClues,
+      currentPlayerIndex: nextIndex,
     });
     setClueInput("");
-    setPhase("clue");
   }
 
-  function playAgain() {
+  // --- MAJORITY VOTE PHASE ---
+  function handleMajorityDecision(isMajorityYes) {
+    if (isMajorityYes) {
+      // Reset votes & start the per-player exile vote at player 0
+      setGame({ ...game, votes: {}, currentPlayerIndex: 0 });
+      setPhase("vote");
+    } else {
+      // Loop back for another clue round
+      setGame({ ...game, clues: [], currentPlayerIndex: 0 });
+      setPhase("clue");
+    }
+  }
+
+  // --- EXILE VOTE PHASE: collect a vote from every player, then tally ---
+  function handleCastVote(selectedIndex) {
+    const updatedVotes = {
+      ...game.votes,
+      [game.currentPlayerIndex]: selectedIndex,
+    };
+    const nextIndex = game.currentPlayerIndex + 1;
+
+    if (nextIndex >= game.players.length) {
+      // All players have voted — tally
+      const tally = {};
+      for (const voter in updatedVotes) {
+        const accused = updatedVotes[voter];
+        tally[accused] = (tally[accused] || 0) + 1;
+      }
+
+      // Find the player(s) with the most votes
+      const maxVotes = Math.max(...Object.values(tally));
+      const leaders = Object.keys(tally)
+        .filter((i) => tally[i] === maxVotes)
+        .map(Number);
+
+      // Clear leader → exile them. Tie → no exile (imposter escapes).
+      const finalAccused = leaders.length === 1 ? leaders[0] : null;
+
+      setGame({ ...game, votes: updatedVotes });
+
+      if (finalAccused === null) {
+        // Tie — no one exiled; treat as imposter escapes
+        setResult({
+          accusedName: "— TIE —",
+          accusedIsImposter: false,
+          imposterName: game.players[game.imposterIndex],
+          secretWord: game.secretWord,
+        });
+      } else {
+        setResult({
+          accusedName: game.players[finalAccused],
+          accusedIsImposter: finalAccused === game.imposterIndex,
+          imposterName: game.players[game.imposterIndex],
+          secretWord: game.secretWord,
+        });
+      }
+
+      setPhase("result");
+      return;
+    }
+
+    // Otherwise, hand to the next voter
+    setGame({
+      ...game,
+      votes: updatedVotes,
+      currentPlayerIndex: nextIndex,
+    });
+  }
+
+  // --- RESET GAME ---
+  function resetGame() {
     setGame(null);
     setResult(null);
     setPhase("setup");
@@ -182,60 +188,31 @@ function App() {
 
   return (
     <main className="app">
+      {/* 1. SETUP PHASE */}
       {phase === "setup" && (
-        <section className="card">
-          <h1>Imposter</h1>
-          <p className="subtitle">Add players to start the game.</p>
-
-          <div className="player-list">
-            {playerNames.map((name, index) => (
-              <div className="player-row" key={index}>
-                <input
-                  type="text"
-                  placeholder={`Player ${index + 1}`}
-                  value={name}
-                  onChange={(e) => updatePlayerName(index, e.target.value)}
-                />
-                <button type="button" onClick={() => removePlayer(index)}>
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <div className="category-input">
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option value="">Select a category...</option>
-              {Object.keys(words).map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="actions">
-            <button type="button" onClick={addPlayer}>
-              Add Player
-            </button>
-            <button type="button" className="primary" onClick={startGame}>
-              Start Game
-            </button>
-          </div>
-        </section>
+        <SetupScreen
+          playerNames={playerNames}
+          updatePlayerName={updatePlayerName}
+          addPlayer={addPlayer}
+          removePlayer={removePlayer}
+          startGame={startGame}
+          categories={categories}
+          category={category}
+          setCategory={setCategory}
+        />
       )}
 
+      {/* 2. ROLE REVEAL PHASE */}
       {phase === "roleReveal" && game && (
-        <section className="card">
-          <h1>Role Reveal</h1>
+        <section className="card role-card">
+          <h1 className="title-glow">ROLE REVEAL</h1>
           <p className="subtitle">Pass the device to:</p>
-          <h2>{game.players[game.currentPlayerIndex]}</h2>
+          <h2 className="player-highlight">{game.players[game.currentPlayerIndex]}</h2>
 
           {!isRoleVisible ? (
             <button
               type="button"
-              className="primary"
+              className="btn-primary pulse"
               onClick={() => setIsRoleVisible(true)}
             >
               Reveal My Role
@@ -249,7 +226,7 @@ function App() {
                   Your word is: <strong>{game.secretWord}</strong>
                 </p>
               )}
-              <button type="button" onClick={nextRoleReveal}>
+              <button type="button" className="btn-secondary" onClick={nextRoleReveal}>
                 Hide and Pass
               </button>
             </>
@@ -257,6 +234,7 @@ function App() {
         </section>
       )}
 
+      {/* 3. CLUE PHASE */}
       {phase === "clue" && game && (
         <ClueScreen
           game={game}
@@ -266,27 +244,26 @@ function App() {
         />
       )}
 
+      {/* 4. MAJORITY VOTE CHECK */}
+      {phase === "majorityVote" && game && (
+        <MajorityVoteScreen
+          game={game}
+          onDecision={handleMajorityDecision}
+        />
+      )}
+
+      {/* 5. FINAL EXILE VOTE — one per player */}
       {phase === "vote" && game && (
         <VoteScreen
           key={game.currentPlayerIndex}
           game={game}
-          onVoteSubmit={handleVoteSubmit}
+          onVoteSubmit={handleCastVote}
         />
       )}
 
-      {phase === "tally" && game && (
-        <TallyScreen game={game} tally={tally} onContinue={handleTallyContinue} />
-      )}
-
-      {phase === "imposterGuess" && game && (
-        <ImposterGuessScreen
-          imposterName={game.players[game.imposterIndex]}
-          onGuess={handleImposterGuess}
-        />
-      )}
-
+      {/* 6. SUSPENSE RESULT REVEAL */}
       {phase === "result" && result && (
-        <ResultScreen result={result} onPlayAgain={playAgain} />
+        <ResultScreen result={result} onPlayAgain={resetGame} />
       )}
     </main>
   );
