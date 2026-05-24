@@ -1,15 +1,14 @@
 import React, { useState } from "react";
+import { useToast } from "./Toast";
 
 export default function VoteScreen({ game, onVoteSubmit }) {
   const [selectedIndex, setSelectedIndex] = useState(null);
   const currentPlayer = game.players[game.currentPlayerIndex];
+  const showToast = useToast();
 
   function handleSubmit() {
-    console.log("selectedIndex:", selectedIndex);
-    console.log("currentPlayerIndex:", game.currentPlayerIndex);
-    
     if (selectedIndex === null) {
-      alert("Please select a suspect before submitting!");
+      showToast("Mark a suspect before locking in your vote.");
       return;
     }
     onVoteSubmit(selectedIndex);

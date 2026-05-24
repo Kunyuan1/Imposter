@@ -824,6 +824,99 @@ button:active { transform: translateY(0); }
   text-shadow: 0 0 24px rgba(244, 63, 94, 0.7);
 }
 
+/* ---------- Toast notifications ---------- */
+
+.toast-layer {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  pointer-events: none;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 22px;
+  background: rgba(8, 10, 20, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--danger);
+  border-radius: 12px;
+  color: #fecdd3;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  box-shadow:
+    0 0 0 1px rgba(244, 63, 94, 0.2) inset,
+    0 12px 40px -10px rgba(244, 63, 94, 0.5),
+    0 0 30px -8px rgba(244, 63, 94, 0.4);
+  pointer-events: auto;
+  animation: toastIn 0.35s cubic-bezier(.2,.9,.3,1.2), toastOut 0.4s ease 2.6s forwards;
+  position: relative;
+  overflow: hidden;
+}
+
+.toast::before {
+  /* glitch scan line */
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--danger);
+  box-shadow: 0 0 14px var(--danger);
+  animation: toastScan 1.5s ease-in-out infinite;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); filter: blur(6px); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);     filter: blur(0); }
+}
+
+@keyframes toastOut {
+  to { opacity: 0; transform: translateY(10px) scale(0.98); filter: blur(4px); }
+}
+
+@keyframes toastScan {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+.toast-tag {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--danger);
+  text-shadow: 0 0 8px rgba(244, 63, 94, 0.6);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.toast-msg { white-space: nowrap; }
+
+.toast-info {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow:
+    0 0 0 1px rgba(94, 234, 212, 0.2) inset,
+    0 12px 40px -10px rgba(94, 234, 212, 0.5);
+}
+
+.toast-info::before { background: var(--accent); box-shadow: 0 0 14px var(--accent); }
+.toast-info .toast-tag { color: var(--accent); }
+
+@media (max-width: 480px) {
+  .toast { font-size: 0.9rem; padding: 12px 16px; gap: 10px; }
+  .toast-msg { white-space: normal; }
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 480px) {

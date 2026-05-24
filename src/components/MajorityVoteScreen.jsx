@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useToast } from './Toast';
 
 export default function MajorityVoteScreen({ game, onDecision }) {
   // We use an object to store votes: { "Player 1": true, "Player 2": false }
   const [votes, setVotes] = useState({});
+  const showToast = useToast();
 
   function handleVote(player, isYes) {
     setVotes({
@@ -17,7 +19,7 @@ export default function MajorityVoteScreen({ game, onDecision }) {
 
     // Guardrail: Ensure everyone votes
     if (votesCast < totalPlayers) {
-      alert("All agents must cast their vote!");
+      showToast("All agents must cast a vote before proceeding.");
       return;
     }
 

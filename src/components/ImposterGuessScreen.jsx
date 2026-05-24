@@ -1,11 +1,13 @@
 import React, { useState } from "react";
+import { useToast } from "./Toast";
 
 export default function ImposterGuessScreen({ imposterName, onGuess }) {
   const [guess, setGuess] = useState("");
+  const showToast = useToast();
 
   function handleSubmit() {
     if (guess.trim() === "") {
-      alert("Please enter a guess!");
+      showToast("Enter your final guess — this is your only shot.");
       return;
     }
     onGuess(guess);

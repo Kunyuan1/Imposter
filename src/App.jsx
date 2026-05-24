@@ -4,10 +4,12 @@ import ClueScreen from './components/ClueScreen';
 import MajorityVoteScreen from './components/MajorityVoteScreen';
 import VoteScreen from './components/VoteScreen';
 import ResultScreen from './components/ResultScreen';
+import { useToast } from './components/Toast';
 import words from './data/words';
 import './App.css';
 
 function App() {
+  const showToast = useToast();
   // --- STATE MANAGEMENT ---
   const [phase, setPhase] = useState("setup");
   const [playerNames, setPlayerNames] = useState(["", "", "", ""]);
@@ -38,11 +40,11 @@ function App() {
   function startGame() {
     const validPlayers = playerNames.filter(name => name.trim() !== "");
     if (validPlayers.length < 3) {
-      alert("You need at least 3 agents to play!");
+      showToast("Mission requires at least 3 agents on the roster.");
       return;
     }
     if (!category) {
-      alert("Please choose an intel category.");
+      showToast("Select an intel category before deployment.");
       return;
     }
 
@@ -78,7 +80,7 @@ function App() {
   // --- CLUE PHASE ---
   function submitClue() {
     if (clueInput.trim() === "") {
-      alert("Please enter a clue.");
+      showToast("Transmission empty — submit a clue to proceed.");
       return;
     }
 
