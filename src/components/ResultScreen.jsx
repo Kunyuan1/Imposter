@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 /**
  * Multi-stage suspenseful result reveal.
@@ -13,16 +13,25 @@ import React, { useEffect, useState } from "react";
 export default function ResultScreen({ result, onPlayAgain }) {
   const { accusedName, accusedIsImposter, imposterName, secretWord } = result;
   const [stage, setStage] = useState(0);
+  const timersRef = useRef([]);
+
+  // Never let stage move backward (so Skip can't be undone by a pending timer)
+  const advanceTo = (n) => setStage((s) => Math.max(s, n));
 
   useEffect(() => {
-    const timers = [
-      setTimeout(() => setStage(1), 2200),
-      setTimeout(() => setStage(2), 4600),
-      setTimeout(() => setStage(3), 6800),
-      setTimeout(() => setStage(4), 8800),
+    timersRef.current = [
+      setTimeout(() => advanceTo(1), 2200),
+      setTimeout(() => advanceTo(2), 4600),
+      setTimeout(() => advanceTo(3), 6800),
+      setTimeout(() => advanceTo(4), 8800),
     ];
-    return () => timers.forEach(clearTimeout);
+    return () => timersRef.current.forEach(clearTimeout);
   }, []);
+
+  function skipToEnd() {
+    timersRef.current.forEach(clearTimeout);
+    setStage(4);
+  }
 
   const citizensWin = accusedIsImposter;
 
@@ -85,7 +94,7 @@ export default function ResultScreen({ result, onPlayAgain }) {
         <button
           type="button"
           className="btn-secondary skip-btn"
-          onClick={() => setStage(4)}
+          onClick={skipToEnd}
         >
           Skip ▸
         </button>
