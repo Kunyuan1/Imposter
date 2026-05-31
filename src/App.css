@@ -824,6 +824,92 @@ button:active { transform: translateY(0); }
   text-shadow: 0 0 24px rgba(244, 63, 94, 0.7);
 }
 
+/* ---------- Role badge (always-visible reminder) ---------- */
+
+.role-badge {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(8, 10, 20, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 1px;
+  pointer-events: none;
+  animation: badgeIn 0.5s cubic-bezier(.2,.9,.3,1.2) both;
+  max-width: 240px;
+}
+
+@keyframes badgeIn {
+  from { opacity: 0; transform: translateY(-10px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.role-badge-tag {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.role-badge-value {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.role-badge.agent {
+  border: 1px solid var(--good);
+  box-shadow:
+    0 0 0 1px rgba(52, 211, 153, 0.2) inset,
+    0 8px 28px -8px rgba(52, 211, 153, 0.45);
+}
+.role-badge.agent .role-badge-tag,
+.role-badge.agent .role-badge-value {
+  color: #d1fae5;
+  text-shadow: 0 0 10px rgba(52, 211, 153, 0.55);
+}
+
+.role-badge.imposter {
+  border: 1px solid var(--danger);
+  box-shadow:
+    0 0 0 1px rgba(244, 63, 94, 0.2) inset,
+    0 8px 28px -8px rgba(244, 63, 94, 0.45);
+  animation: badgeIn 0.5s cubic-bezier(.2,.9,.3,1.2) both, dangerPulse 2.5s ease-in-out infinite 0.5s;
+}
+.role-badge.imposter .role-badge-tag,
+.role-badge.imposter .role-badge-value {
+  color: #fecdd3;
+  text-shadow: 0 0 10px rgba(244, 63, 94, 0.6);
+}
+
+@media (max-width: 480px) {
+  .role-badge {
+    top: 10px;
+    right: 10px;
+    padding: 8px 12px;
+    max-width: 180px;
+  }
+  .role-badge-value { font-size: 0.95rem; letter-spacing: 2px; }
+}
+
+/* ---------- Result screen waiting line ---------- */
+
+.waiting-line {
+  margin-top: 1.25rem;
+  letter-spacing: 3px;
+  animation: blink 2s ease-in-out infinite;
+}
+
 /* ---------- Toast notifications ---------- */
 
 .toast-layer {

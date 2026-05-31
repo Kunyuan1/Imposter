@@ -10,7 +10,7 @@ import React, { useEffect, useRef, useState } from "react";
  *   3 — reveal the secret word
  *   4 — show winner banner + Play Again button
  */
-export default function ResultScreen({ result, onPlayAgain, onImposterGuess }) {
+export default function ResultScreen({ result, onPlayAgain, onImposterGuess, isHost, isImposter }) {
   const { accusedName, accusedIsImposter, imposterName, secretWord } = result;
   const [stage, setStage] = useState(0);
   const timersRef = useRef([]);
@@ -90,9 +90,13 @@ export default function ResultScreen({ result, onPlayAgain, onImposterGuess }) {
             <>
               <p className="winner-line bad">IMPOSTER CAUGHT!</p>
               <p className="subtitle">Give the imposter one final chance to steal the win.</p>
-              <button type="button" className="btn-primary" onClick={onImposterGuess}>
-                Imposter's Last Stand
-              </button>
+              {isImposter ? (
+                <button type="button" className="btn-primary" onClick={onImposterGuess}>
+                  Make Your Last Stand
+                </button>
+              ) : (
+                <p className="subtitle waiting-line">// awaiting imposter's final guess...</p>
+              )}
             </>
           ) : (
             <>
@@ -103,9 +107,13 @@ export default function ResultScreen({ result, onPlayAgain, onImposterGuess }) {
                   ? "IMPOSTER STEALS THE WIN"
                   : "IMPOSTER WINS"}
               </p>
-              <button type="button" className="btn-primary" onClick={onPlayAgain}>
-                Play Again
-              </button>
+              {isHost ? (
+                <button type="button" className="btn-primary" onClick={onPlayAgain}>
+                  Play Again
+                </button>
+              ) : (
+                <p className="subtitle waiting-line">// awaiting host to start next mission...</p>
+              )}
             </>
           )}
         </div>

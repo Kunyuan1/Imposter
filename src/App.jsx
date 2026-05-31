@@ -8,9 +8,12 @@ import MajorityVoteScreen from "./components/MajorityVoteScreen";
 import VoteScreen from "./components/VoteScreen";
 import ResultScreen from "./components/ResultScreen";
 import ImposterGuessScreen from "./components/ImposterGuessScreen";
+import RoleBadge from "./components/RoleBadge";
+import { useToast } from "./components/Toast";
 import words from "./data/words";
 
 function App() {
+  const showToast = useToast();
   const [phase, setPhase] = useState("home");
   const [playerName, setPlayerName] = useState("");
   const [roomCode, setRoomCode] = useState("");
@@ -113,7 +116,7 @@ function App() {
     }
 
     else if (msg.type === "error") {
-      alert(msg.message);
+      showToast(msg.message);
     }
   }
 
@@ -141,7 +144,7 @@ function App() {
 
   function handleSubmitClue() {
     if (clueInput.trim() === "") {
-      alert("Please enter a clue.");
+      showToast("Transmission empty — submit a clue to proceed.");
       return;
     }
     sendMessage({ type: "submit_clue", clue: clueInput.trim() });
@@ -172,8 +175,15 @@ function App() {
   const isMyTurn = game && game.players &&
     game.players[game.currentPlayerIndex] === playerName;
 
+  const inGamePhase = ["clue", "majorityVote", "vote", "imposterGuess"].includes(phase);
+  const isHost = host === playerName;
+
   return (
     <main className="app">
+
+      {inGamePhase && myRole && (
+        <RoleBadge role={myRole.role} secretWord={myRole.secretWord} />
+      )}
 
       {phase === "home" && (
         <HomeScreen
@@ -312,6 +322,8 @@ function App() {
           result={result}
           onPlayAgain={handlePlayAgain}
           onImposterGuess={handleImposterGuessButton}
+          isHost={isHost}
+          isImposter={myRole?.role === "imposter"}
         />
       )}
 

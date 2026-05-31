@@ -1,12 +1,14 @@
 import React, { useState } from "react";
+import { useToast } from "./Toast";
 
 export default function HomeScreen({ onCreateRoom, onJoinRoom }) {
   const [name, setName] = useState("");
   const [roomCode, setRoomCode] = useState("");
+  const showToast = useToast();
 
   function handleCreate() {
     if (name.trim() === "") {
-      alert("Please enter your name.");
+      showToast("Identify yourself before entering the network.");
       return;
     }
     onCreateRoom(name.trim());
@@ -14,11 +16,11 @@ export default function HomeScreen({ onCreateRoom, onJoinRoom }) {
 
   function handleJoin() {
     if (name.trim() === "") {
-      alert("Please enter your name.");
+      showToast("Identify yourself before entering the network.");
       return;
     }
     if (roomCode.trim() === "") {
-      alert("Please enter a room code.");
+      showToast("Enter a room code to join the operation.");
       return;
     }
     onJoinRoom(name.trim(), roomCode.trim().toUpperCase());
