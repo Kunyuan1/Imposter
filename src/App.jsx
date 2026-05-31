@@ -1,215 +1,204 @@
-import React, { useState } from 'react';
-import SetupScreen from './components/SetupScreen';
-import ClueScreen from './components/ClueScreen';
-import MajorityVoteScreen from './components/MajorityVoteScreen';
-import VoteScreen from './components/VoteScreen';
-import ResultScreen from './components/ResultScreen';
-import { useToast } from './components/Toast';
-import words from './data/words';
-import './App.css';
+import { useState, useEffect, useRef } from "react";
+import "./App.css";
+import { connect, sendMessage, disconnect } from "./game/socket";
+import HomeScreen from "./components/HomeScreen";
+import LobbyScreen from "./components/LobbyScreen";
+import ClueScreen from "./components/ClueScreen";
+import MajorityVoteScreen from "./components/MajorityVoteScreen";
+import VoteScreen from "./components/VoteScreen";
+import ResultScreen from "./components/ResultScreen";
+import ImposterGuessScreen from "./components/ImposterGuessScreen";
+import words from "./data/words";
 
 function App() {
-  const showToast = useToast();
-  // --- STATE MANAGEMENT ---
-  const [phase, setPhase] = useState("setup");
-  const [playerNames, setPlayerNames] = useState(["", "", "", ""]);
-  const [category, setCategory] = useState("");
+  const [phase, setPhase] = useState("home");
+  const [playerName, setPlayerName] = useState("");
+  const [roomCode, setRoomCode] = useState("");
+  const [players, setPlayers] = useState([]);
+  const [host, setHost] = useState("");
   const [game, setGame] = useState(null);
-  const [isRoleVisible, setIsRoleVisible] = useState(false);
+  const [myRole, setMyRole] = useState(null);
   const [clueInput, setClueInput] = useState("");
+  const [isRoleVisible, setIsRoleVisible] = useState(false);
   const [result, setResult] = useState(null);
+  const [roleConfirmed, setRoleConfirmed] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("");
 
-  const categories = Object.keys(words);
+  const handleMessageRef = useRef(null);
 
-  // --- SETUP PHASE FUNCTIONS ---
-  function updatePlayerName(index, name) {
-    const newNames = [...playerNames];
-    newNames[index] = name;
-    setPlayerNames(newNames);
-  }
+  useEffect(() => {
+    connect((msg) => handleMessageRef.current(msg));
+    return () => disconnect();
+  }, []);
 
-  function addPlayer() {
-    setPlayerNames([...playerNames, ""]);
-  }
+  function handleMessage(msg) {
+    console.log("Message received:", msg);
 
-  function removePlayer(index) {
-    const newNames = playerNames.filter((_, i) => i !== index);
-    setPlayerNames(newNames);
-  }
-
-  function startGame() {
-    const validPlayers = playerNames.filter(name => name.trim() !== "");
-    if (validPlayers.length < 3) {
-      showToast("Mission requires at least 3 agents on the roster.");
-      return;
-    }
-    if (!category) {
-      showToast("Select an intel category before deployment.");
-      return;
+    if (msg.type === "room_created") {
+      setRoomCode(msg.code);
+      setPhase("lobby");
     }
 
-    const categoryWords = words[category];
-    const secretWord = categoryWords[Math.floor(Math.random() * categoryWords.length)];
-    const imposterIndex = Math.floor(Math.random() * validPlayers.length);
+    else if (msg.type === "joined") {
+      setRoomCode(msg.code);
+      setPhase("lobby");
+    }
 
-    setGame({
-      players: validPlayers,
-      imposterIndex,
-      secretWord,
-      category,
-      currentPlayerIndex: 0,
-      clues: [],
-      votes: {}, // { voterIndex: accusedIndex }
-    });
-    setPhase("roleReveal");
-  }
+    else if (msg.type === "room_update") {
+      setPlayers(msg.players);
+      setHost(msg.host);
+    }
 
-  // --- ROLE REVEAL PHASE ---
-  function nextRoleReveal() {
-    setIsRoleVisible(false);
-    const nextIndex = game.currentPlayerIndex + 1;
+    else if (msg.type === "role_assigned") {
+      setMyRole(msg);
+    }
 
-    if (nextIndex >= game.players.length) {
-      setGame({ ...game, currentPlayerIndex: 0 });
-      setPhase("clue");
-    } else {
-      setGame({ ...game, currentPlayerIndex: nextIndex });
+    else if (msg.type === "phase_change") {
+      const { phase: newPhase, ...rest } = msg;
+
+      if (newPhase === "lobby") {
+        setPhase("lobby");
+        setGame(null);
+        setResult(null);
+        setMyRole(null);
+        setClueInput("");
+      }
+
+      else if (newPhase === "roleReveal") {
+        setGame(rest);
+        setIsRoleVisible(false);
+        setRoleConfirmed(false);
+        setPhase("roleReveal");
+      }
+
+      else if (newPhase === "clue") {
+        setGame(rest);
+        setPhase("clue");
+      }
+
+      else if (newPhase === "majorityVote") {
+        setGame(rest);
+        setPhase("majorityVote");
+      }
+
+      else if (newPhase === "vote") {
+        setGame(rest);
+        setPhase("vote");
+      }
+
+      else if (newPhase === "imposterGuess") {
+        setGame(rest);
+        setResult({
+          accusedName: rest.accusedName,
+          accusedIsImposter: rest.accusedIsImposter,
+          imposterName: rest.imposterName,
+          secretWord: rest.secretWord,
+          imposterGuessedCorrectly: null,
+        });
+        setPhase("result");
+      }
+
+      else if (newPhase === "result") {
+        console.log("Result data:", rest);
+        setResult({
+          accusedName: rest.accusedName,
+          accusedIsImposter: rest.accusedIsImposter,
+          imposterName: rest.imposterName,
+          secretWord: rest.secretWord,
+          imposterGuessedCorrectly: rest.imposterGuessedCorrectly ?? null,
+          imposterGuess: rest.imposterGuess ?? null,
+        });
+        setPhase("result");
+      }
+    }
+
+    else if (msg.type === "error") {
+      alert(msg.message);
     }
   }
 
-  // --- CLUE PHASE ---
-  function submitClue() {
+  handleMessageRef.current = handleMessage;
+
+  // --- ACTIONS ---
+  function handleCreateRoom(name) {
+    setPlayerName(name);
+    sendMessage({ type: "create", name });
+  }
+
+  function handleJoinRoom(name, code) {
+    setPlayerName(name);
+    sendMessage({ type: "join", name, code });
+  }
+
+  function handleStartGame() {
+    sendMessage({ type: "start_game", category: selectedCategory });
+  }
+
+  function handleRoleConfirmed() {
+    setRoleConfirmed(true);
+    sendMessage({ type: "role_confirmed" });
+  }
+
+  function handleSubmitClue() {
     if (clueInput.trim() === "") {
-      showToast("Transmission empty — submit a clue to proceed.");
+      alert("Please enter a clue.");
       return;
     }
-
-    const newClue = {
-      player: game.players[game.currentPlayerIndex],
-      clue: clueInput.trim(),
-    };
-
-    const currentClues = game.clues || [];
-    const updatedClues = [...currentClues, newClue];
-    const nextIndex = game.currentPlayerIndex + 1;
-
-    if (nextIndex >= game.players.length) {
-      setGame({
-        ...game,
-        clues: updatedClues,
-        currentPlayerIndex: 0,
-      });
-      setClueInput("");
-      setPhase("majorityVote");
-      return;
-    }
-
-    setGame({
-      ...game,
-      clues: updatedClues,
-      currentPlayerIndex: nextIndex,
-    });
+    sendMessage({ type: "submit_clue", clue: clueInput.trim() });
     setClueInput("");
   }
 
-  // --- MAJORITY VOTE PHASE ---
   function handleMajorityDecision(isMajorityYes) {
-    if (isMajorityYes) {
-      // Reset votes & start the per-player exile vote at player 0
-      setGame({ ...game, votes: {}, currentPlayerIndex: 0 });
-      setPhase("vote");
-    } else {
-      // Loop back for another clue round
-      setGame({ ...game, clues: [], currentPlayerIndex: 0 });
-      setPhase("clue");
-    }
+    sendMessage({ type: "majority_decision", decision: isMajorityYes ? "yes" : "no" });
   }
 
-  // --- EXILE VOTE PHASE: collect a vote from every player, then tally ---
-  function handleCastVote(selectedIndex) {
-    const updatedVotes = {
-      ...game.votes,
-      [game.currentPlayerIndex]: selectedIndex,
-    };
-    const nextIndex = game.currentPlayerIndex + 1;
-
-    if (nextIndex >= game.players.length) {
-      // All players have voted — tally
-      const tally = {};
-      for (const voter in updatedVotes) {
-        const accused = updatedVotes[voter];
-        tally[accused] = (tally[accused] || 0) + 1;
-      }
-
-      // Find the player(s) with the most votes
-      const maxVotes = Math.max(...Object.values(tally));
-      const leaders = Object.keys(tally)
-        .filter((i) => tally[i] === maxVotes)
-        .map(Number);
-
-      // Clear leader → exile them. Tie → no exile (imposter escapes).
-      const finalAccused = leaders.length === 1 ? leaders[0] : null;
-
-      setGame({ ...game, votes: updatedVotes });
-
-      if (finalAccused === null) {
-        // Tie — no one exiled; treat as imposter escapes
-        setResult({
-          accusedName: "— TIE —",
-          accusedIsImposter: false,
-          imposterName: game.players[game.imposterIndex],
-          secretWord: game.secretWord,
-        });
-      } else {
-        setResult({
-          accusedName: game.players[finalAccused],
-          accusedIsImposter: finalAccused === game.imposterIndex,
-          imposterName: game.players[game.imposterIndex],
-          secretWord: game.secretWord,
-        });
-      }
-
-      setPhase("result");
-      return;
-    }
-
-    // Otherwise, hand to the next voter
-    setGame({
-      ...game,
-      votes: updatedVotes,
-      currentPlayerIndex: nextIndex,
-    });
+  function handleCastVote(accusedIndex) {
+    sendMessage({ type: "cast_vote", accusedIndex });
   }
 
-  // --- RESET GAME ---
-  function resetGame() {
-    setGame(null);
-    setResult(null);
-    setPhase("setup");
+  function handleImposterGuess(guess) {
+    sendMessage({ type: "imposter_guess", guess });
   }
+
+  function handlePlayAgain() {
+    sendMessage({ type: "play_again" });
+  }
+
+  function handleImposterGuessButton() {
+    setPhase("imposterGuess");
+  }
+
+  // --- RENDER ---
+  const isMyTurn = game && game.players &&
+    game.players[game.currentPlayerIndex] === playerName;
 
   return (
     <main className="app">
-      {/* 1. SETUP PHASE */}
-      {phase === "setup" && (
-        <SetupScreen
-          playerNames={playerNames}
-          updatePlayerName={updatePlayerName}
-          addPlayer={addPlayer}
-          removePlayer={removePlayer}
-          startGame={startGame}
-          categories={categories}
-          category={category}
-          setCategory={setCategory}
+
+      {phase === "home" && (
+        <HomeScreen
+          onCreateRoom={handleCreateRoom}
+          onJoinRoom={handleJoinRoom}
         />
       )}
 
-      {/* 2. ROLE REVEAL PHASE */}
+      {phase === "lobby" && (
+        <LobbyScreen
+          roomCode={roomCode}
+          players={players}
+          host={host}
+          playerName={playerName}
+          onStartGame={handleStartGame}
+          category={selectedCategory}
+          setCategory={setSelectedCategory}
+          categories={Object.keys(words)}
+        />
+      )}
+
       {phase === "roleReveal" && game && (
         <section className="card role-card">
           <h1 className="title-glow">ROLE REVEAL</h1>
-          <p className="subtitle">Pass the device to:</p>
-          <h2 className="player-highlight">{game.players[game.currentPlayerIndex]}</h2>
+          <p className="subtitle">Your role:</p>
 
           {!isRoleVisible ? (
             <button
@@ -221,32 +210,61 @@ function App() {
             </button>
           ) : (
             <>
-              {game.currentPlayerIndex === game.imposterIndex ? (
+              {myRole?.role === "imposter" ? (
                 <p className="role imposter">You are the Imposter</p>
               ) : (
                 <p className="role word">
-                  Your word is: <strong>{game.secretWord}</strong>
+                  Your word is: <strong>{myRole?.secretWord}</strong>
                 </p>
               )}
-              <button type="button" className="btn-secondary" onClick={nextRoleReveal}>
-                Hide and Pass
-              </button>
+              {!roleConfirmed ? (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleRoleConfirmed}
+                >
+                  I'm Ready
+                </button>
+              ) : (
+                <p className="subtitle">Waiting for other players...</p>
+              )}
             </>
           )}
         </section>
       )}
 
-      {/* 3. CLUE PHASE */}
       {phase === "clue" && game && (
-        <ClueScreen
-          game={game}
-          clueInput={clueInput}
-          setClueInput={setClueInput}
-          onSubmit={submitClue}
-        />
+        isMyTurn ? (
+          <ClueScreen
+            game={game}
+            clueInput={clueInput}
+            setClueInput={setClueInput}
+            onSubmit={handleSubmitClue}
+          />
+        ) : (
+          <section className="card">
+            <h1 className="title-glow">CLUE PHASE</h1>
+            <p className="subtitle">Waiting for:</p>
+            <h2 className="player-highlight">
+              {game.players[game.currentPlayerIndex]}
+            </h2>
+            <div className="clue-log">
+              <h3>DECODED CLUES</h3>
+              {(!game.clues || game.clues.length === 0) ? (
+                <p className="subtitle">No clues yet...</p>
+              ) : (
+                game.clues.map((item, index) => (
+                  <div className="clue-item" key={index}>
+                    <span className="clue-author">{item.player}:</span>
+                    <span className="clue-text"> "{item.clue}"</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        )
       )}
 
-      {/* 4. MAJORITY VOTE CHECK */}
       {phase === "majorityVote" && game && (
         <MajorityVoteScreen
           game={game}
@@ -254,19 +272,49 @@ function App() {
         />
       )}
 
-      {/* 5. FINAL EXILE VOTE — one per player */}
       {phase === "vote" && game && (
-        <VoteScreen
-          key={game.currentPlayerIndex}
-          game={game}
-          onVoteSubmit={handleCastVote}
+        isMyTurn ? (
+          <VoteScreen
+            key={game.currentPlayerIndex}
+            game={game}
+            onVoteSubmit={handleCastVote}
+          />
+        ) : (
+          <section className="card">
+            <h1 className="title-glow critical">EXILE VERDICT</h1>
+            <p className="subtitle">Waiting for:</p>
+            <h2 className="player-highlight">
+              {game.players[game.currentPlayerIndex]}
+            </h2>
+          </section>
+        )
+      )}
+
+      {phase === "imposterGuess" && game && (
+        myRole?.role === "imposter" ? (
+          <ImposterGuessScreen
+            imposterName={playerName}
+            onGuess={handleImposterGuess}
+          />
+        ) : (
+          <section className="card">
+            <h1 className="title-glow">IMPOSTER'S LAST STAND</h1>
+            <p className="subtitle">
+              The imposter is making their final guess...
+            </p>
+          </section>
+        )
+      )}
+
+      {phase === "result" && result && (
+        <ResultScreen
+          key={result.imposterGuessedCorrectly === null ? "pending" : "final"}
+          result={result}
+          onPlayAgain={handlePlayAgain}
+          onImposterGuess={handleImposterGuessButton}
         />
       )}
 
-      {/* 6. SUSPENSE RESULT REVEAL */}
-      {phase === "result" && result && (
-        <ResultScreen result={result} onPlayAgain={resetGame} />
-      )}
     </main>
   );
 }

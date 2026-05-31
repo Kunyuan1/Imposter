@@ -10,7 +10,7 @@ import React, { useEffect, useRef, useState } from "react";
  *   3 — reveal the secret word
  *   4 — show winner banner + Play Again button
  */
-export default function ResultScreen({ result, onPlayAgain }) {
+export default function ResultScreen({ result, onPlayAgain, onImposterGuess }) {
   const { accusedName, accusedIsImposter, imposterName, secretWord } = result;
   const [stage, setStage] = useState(0);
   const timersRef = useRef([]);
@@ -33,7 +33,7 @@ export default function ResultScreen({ result, onPlayAgain }) {
     setStage(4);
   }
 
-  const citizensWin = accusedIsImposter;
+  const citizensWin = accusedIsImposter && result.imposterGuessedCorrectly === false;
 
   return (
     <section className={`card result-card ${citizensWin ? "victory" : "defeat"}`}>
@@ -61,32 +61,53 @@ export default function ResultScreen({ result, onPlayAgain }) {
 
       {/* Stage 2+ — was it the imposter? */}
       {stage >= 2 && (
-        <div className={`verdict-banner ${citizensWin ? "good" : "bad"} reveal-line`}>
-          {citizensWin
+        <div className={`verdict-banner ${accusedIsImposter ? "good" : "bad"} reveal-line`}>
+          {accusedIsImposter
             ? "✓ TARGET CONFIRMED — IMPOSTER"
             : "✗ INNOCENT AGENT EXILED"}
         </div>
       )}
 
-      {/* Stage 3+ — secret word reveal */}
-      {stage >= 3 && (
+      {/* Stage 3+ — secret word reveal (only show if imposter already guessed or wasn't caught) */}
+      {stage >= 3 && !(accusedIsImposter && result.imposterGuessedCorrectly === null) && (
         <div className="result-stage reveal-line">
           <p className="subtitle">The real imposter was</p>
           <h2 className="player-highlight glitch-in">{imposterName}</h2>
           <p className="subtitle" style={{ marginTop: "1rem" }}>The secret word was</p>
           <p className="secret-word glitch-in">{secretWord}</p>
+          {result.imposterGuess && (
+            <p className="subtitle" style={{ marginTop: "1rem" }}>
+              The imposter guessed: <strong>{result.imposterGuess}</strong>
+            </p>
+          )}
         </div>
       )}
 
       {/* Stage 4 — winner + play again */}
       {stage >= 4 && (
         <div className="result-stage reveal-line">
-          <p className={`winner-line ${citizensWin ? "good" : "bad"}`}>
-            {citizensWin ? "AGENTS WIN" : "IMPOSTER WINS"}
-          </p>
-          <button type="button" className="btn-primary" onClick={onPlayAgain}>
-            Play Again
-          </button>
+          {result.accusedIsImposter && result.imposterGuessedCorrectly === null ? (
+            <>
+              <p className="winner-line bad">IMPOSTER CAUGHT!</p>
+              <p className="subtitle">Give the imposter one final chance to steal the win.</p>
+              <button type="button" className="btn-primary" onClick={onImposterGuess}>
+                Imposter's Last Stand
+              </button>
+            </>
+          ) : (
+            <>
+              <p className={`winner-line ${citizensWin ? "good" : "bad"}`}>
+                {citizensWin
+                  ? "AGENTS WIN"
+                  : result.imposterGuessedCorrectly
+                  ? "IMPOSTER STEALS THE WIN"
+                  : "IMPOSTER WINS"}
+              </p>
+              <button type="button" className="btn-primary" onClick={onPlayAgain}>
+                Play Again
+              </button>
+            </>
+          )}
         </div>
       )}
 
