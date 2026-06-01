@@ -3,14 +3,9 @@ import "./App.css";
 import { connect, sendMessage, disconnect } from "./game/socket";
 import HomeScreen from "./components/HomeScreen";
 import LobbyScreen from "./components/LobbyScreen";
-import ClueScreen from "./components/ClueScreen";
-import MajorityVoteScreen from "./components/MajorityVoteScreen";
-import VoteScreen from "./components/VoteScreen";
-import ResultScreen from "./components/ResultScreen";
-import ImposterGuessScreen from "./components/ImposterGuessScreen";
+import GameStage from "./components/GameStage";
+import PhaseOverlay from "./components/PhaseOverlay";
 import RoleBadge from "./components/RoleBadge";
-import ClueTimer from "./components/ClueTimer";
-import AnimalAvatar from "./components/AnimalAvatar";
 import { useToast } from "./components/Toast";
 import words from "./data/words";
 
@@ -103,6 +98,12 @@ function App() {
         setVotedPlayers([]);
         setHasVoted(false);
         setPhase("vote");
+      }
+
+      else if (newPhase === "tally") {
+        // Carries tally + (winner) accusedName + isTie + tallyDurationMs
+        setGame(rest);
+        setPhase("tally");
       }
 
       else if (newPhase === "imposterGuess") {
@@ -219,40 +220,28 @@ function App() {
   const isMyTurn = game && game.players &&
     game.players[game.currentPlayerIndex] === playerName;
 
-  const inGamePhase = ["clue", "majorityVote", "vote", "imposterGuess"].includes(phase);
+  // All gameplay phases keep the stage mounted underneath the overlay
+  const inGamePhase = ["roleReveal", "clue", "majorityVote", "vote", "tally", "imposterGuess", "result"].includes(phase);
   const isHost = host === playerName;
 
-  // Per-phase background tint
-  const baseAppClass =
-    phase === "lobby"          ? "app app-lobby"  :
-    phase === "majorityVote"   ? "app app-purple" :
-    phase === "result"         ? "app app-navy"   :
-    phase === "imposterGuess"  ? "app app-navy"   :
-    "app";
-
-  // When the role badge is showing at top-center, give the page extra
-  // top padding so the screen content doesn't sit under it.
-  const appClass = (inGamePhase && myRole)
-    ? `${baseAppClass} app-with-badge`
-    : baseAppClass;
+  const appClass =
+    phase === "lobby" ? "app app-lobby" :
+    phase === "home"  ? "app" :
+    "app app-stage";
 
   // Players list to use for avatar derivation across all in-game screens.
   // game.players is authoritative once the game starts; before that, fall
   // back to the lobby list.
   const allPlayers = (game && game.players) || players;
 
+  // Animate the exiled player's seat during tally (winner state) and result
+  const exiledName =
+    (phase === "tally" && !game?.isTie && game?.accusedName) ||
+    (phase === "result" && result?.accusedName) ||
+    null;
+
   return (
     <main className={appClass}>
-
-      {inGamePhase && myRole && (
-        <RoleBadge
-          role={myRole.role}
-          secretWord={myRole.secretWord}
-          players={allPlayers}
-          name={playerName}
-          animals={playerAnimals}
-        />
-      )}
 
       {phase === "home" && (
         <HomeScreen
@@ -277,153 +266,48 @@ function App() {
         />
       )}
 
-      {phase === "roleReveal" && game && myRole && (
-        <div className="screen">
-          <p className="small center muted">eyes on your screen only</p>
-
-          {myRole.role === "imposter" ? (
-            <div className="role-card role-card-imposter">
-              <span className="role-emoji" aria-hidden="true">🐺</span>
-              <span className="role-pill role-pill-imposter">Imposter</span>
-              <p className="small" style={{ color: "rgba(255,255,255,0.65)" }}>
-                you don't know the word
-              </p>
-              <p className="tiny" style={{ color: "rgba(255,255,255,0.45)" }}>
-                bluff your way through
-              </p>
-            </div>
-          ) : (
-            <div className="role-card role-card-agent">
-              <AnimalAvatar
-                players={allPlayers}
-                name={playerName}
-                animals={playerAnimals}
-                size="lg"
-              />
-              <span className="role-pill role-pill-agent">Agent</span>
-              <p className="section-label">your secret word</p>
-              <p className="secret-word">{myRole.secretWord}</p>
-            </div>
-          )}
-
-          <p className="role-instructions">
-            {myRole.role === "imposter" ? (
-              <>listen carefully<br/>give vague clues that could mean anything</>
-            ) : (
-              <>give clues about this word<br/>without saying it directly</>
-            )}
-          </p>
-
-          {!roleConfirmed ? (
-            <button type="button" className="btn btn-ink" onClick={handleRoleConfirmed}>
-              I'm ready
-            </button>
-          ) : (
-            <p className="small center muted">waiting for other agents...</p>
-          )}
-        </div>
-      )}
-
-      {phase === "clue" && game && (
-        isMyTurn ? (
-          <ClueScreen
-            game={game}
+      {inGamePhase && (
+        <div className="stage-wrap">
+          <GameStage
+            players={allPlayers}
+            host={host}
             animals={playerAnimals}
+            exiled={exiledName}
+          />
+          <PhaseOverlay
+            phase={phase}
+            game={game}
+            myRole={myRole}
+            playerName={playerName}
+            players={allPlayers}
+            animals={playerAnimals}
+            isMyTurn={isMyTurn}
+            isHost={isHost}
+            isImposter={myRole?.role === "imposter"}
             clueInput={clueInput}
             setClueInput={setClueInput}
-            onSubmit={handleSubmitClue}
+            onSubmitClue={handleSubmitClue}
+            onMajorityDecision={handleMajorityDecision}
+            onCastVote={handleCastVote}
+            onRoleConfirmed={handleRoleConfirmed}
+            roleConfirmed={roleConfirmed}
+            votedPlayers={votedPlayers}
+            hasVoted={hasVoted}
+            result={result}
+            onImposterGuess={handleImposterGuess}
+            onImposterGuessButton={handleImposterGuessButton}
+            onPlayAgain={handlePlayAgain}
           />
-        ) : (
-          <div className="screen">
-            <div className="top-bar">
-              <span className="section-label">
-                clue {(game.currentPlayerIndex ?? 0) + 1} of {game.players.length}
-              </span>
-              <ClueTimer endsAt={game.turnEndsAt} />
-            </div>
-
-            <div className="active-turn-card">
-              <AnimalAvatar players={game.players} animals={playerAnimals} name={game.players[game.currentPlayerIndex]} size="sm" />
-              <div className="lines">
-                <span className="name">{game.players[game.currentPlayerIndex]}</span>
-                <span className="status">transmitting clue...</span>
-              </div>
-            </div>
-
-            <p className="section-label">clue log</p>
-            <div className="clue-list">
-              {(!game.clues || game.clues.length === 0) ? (
-                <div className="empty-line">no transmissions yet</div>
-              ) : (
-                game.clues.map((item, i) => (
-                  <div key={i} className={`clue-row ${item.timedOut ? "timeout" : ""}`}>
-                    <AnimalAvatar players={game.players} animals={playerAnimals} name={item.player} size="sm" />
-                    <div>
-                      <div className="meta">{item.player}</div>
-                      <div className="text">"{item.clue}"</div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <p className="small center muted">
-              waiting for {game.players[game.currentPlayerIndex]} to transmit
-            </p>
-          </div>
-        )
-      )}
-
-      {phase === "majorityVote" && game && (
-        <MajorityVoteScreen
-          game={game}
-          onDecision={handleMajorityDecision}
-        />
-      )}
-
-      {phase === "vote" && game && (
-        <VoteScreen
-          game={game}
-          playerName={playerName}
-          votedPlayers={votedPlayers}
-          hasVoted={hasVoted}
-          animals={playerAnimals}
-          onVoteSubmit={handleCastVote}
-        />
-      )}
-
-      {phase === "imposterGuess" && game && (
-        myRole?.role === "imposter" ? (
-          <ImposterGuessScreen
-            imposterName={playerName}
-            players={game.players}
-            animals={playerAnimals}
-            onGuess={handleImposterGuess}
-          />
-        ) : (
-          <div className="screen">
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              <AnimalAvatar asWolf size="lg" />
-            </div>
-            <h2 className="q-title" style={{ color: "#FFF" }}>
-              the imposter is making their final guess...
-            </h2>
-            <p className="waiting-light">listening for transmission</p>
-          </div>
-        )
-      )}
-
-      {phase === "result" && result && (
-        <ResultScreen
-          key={result.imposterGuessedCorrectly === null ? "pending" : "final"}
-          result={result}
-          players={allPlayers}
-          animals={playerAnimals}
-          onPlayAgain={handlePlayAgain}
-          onImposterGuess={handleImposterGuessButton}
-          isHost={isHost}
-          isImposter={myRole?.role === "imposter"}
-        />
+          {myRole && phase !== "clue" && (
+            <RoleBadge
+              role={myRole.role}
+              secretWord={myRole.secretWord}
+              players={allPlayers}
+              name={playerName}
+              animals={playerAnimals}
+            />
+          )}
+        </div>
       )}
 
     </main>

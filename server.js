@@ -60,6 +60,11 @@ function startClueTurn(room) {
   room.turnEndsAt = Date.now() + CLUE_TURN_MS; // server-side enforcement only
   room.clueTimer = setTimeout(() => autoAdvanceClue(room), CLUE_TURN_MS + GRACE_MS);
 
+  // Bump the round counter when starting fresh (player 0, empty log)
+  if (room.currentPlayerIndex === 0 && room.clues.length === 0) {
+    room.clueRound = (room.clueRound || 0) + 1;
+  }
+
   // Send a RELATIVE duration so clients aren't affected by clock skew.
   // Each client computes its own endsAt = Date.now() + clueDurationMs on receipt.
   broadcast(room, {
@@ -69,6 +74,7 @@ function startClueTurn(room) {
     players: room.players.map((p) => p.name),
     clues: room.clues,
     clueDurationMs: CLUE_TURN_MS,
+    clueRound: room.clueRound || 1,
   });
 }
 
@@ -82,6 +88,63 @@ function autoAdvanceClue(room) {
     room.clues.push({ player: activePlayer.name, clue: "— silence —", timedOut: true });
   }
   advanceClueTurn(room);
+}
+
+// --- VOTE TALLY → REVEAL (with a short pause to let everyone read the bars) ---
+const TALLY_WINNER_MS = 3500;
+const TALLY_TIE_MS    = 5000;
+
+function showTallyThen(room, tally, finalAccused) {
+  if (room.tallyTimer) clearTimeout(room.tallyTimer);
+
+  const isTie = finalAccused === null;
+  const tallyMs = isTie ? TALLY_TIE_MS : TALLY_WINNER_MS;
+  const playerNames = room.players.map((p) => p.name);
+
+  room.phase = "tally";
+  room.tally = tally;
+
+  broadcast(room, {
+    type: "phase_change",
+    phase: "tally",
+    tally,
+    players: playerNames,
+    accusedIndex: isTie ? null : finalAccused,
+    accusedName: isTie ? null : playerNames[finalAccused],
+    isTie,
+    tallyDurationMs: tallyMs,
+  });
+
+  room.tallyTimer = setTimeout(() => {
+    room.tallyTimer = null;
+    if (isTie) {
+      // No one exiled — start a fresh clue round
+      room.clues = [];
+      room.currentPlayerIndex = 0;
+      room.votes = {};
+      room.phase = "clue";
+      startClueTurn(room);
+      return;
+    }
+
+    const accusedIsImposter = finalAccused === room.imposterIndex;
+    const resultPayload = {
+      tally,
+      accusedIndex: finalAccused,
+      accusedName: room.players[finalAccused].name,
+      accusedIsImposter,
+      imposterName: room.players[room.imposterIndex].name,
+      secretWord: room.secretWord,
+      imposterGuessedCorrectly: null,
+    };
+    broadcast(room, { type: "phase_change", phase: "result", ...resultPayload });
+    if (accusedIsImposter) {
+      room.phase = "imposterGuess";
+      broadcast(room, { type: "phase_change", phase: "imposterGuess", ...resultPayload });
+    } else {
+      room.phase = "result";
+    }
+  }, tallyMs);
 }
 
 function advanceClueTurn(room) {
@@ -135,6 +198,7 @@ function startGame(room, chosenCategory) {
   room.votes = {};
   room.confirmedRoles = new Set();
   room.majorityVotes = [];
+  room.clueRound = 0;
 
   // Send each player their role privately
   room.players.forEach((player, index) => {
@@ -362,32 +426,7 @@ wss.on("connection", (ws) => {
       const leaders = Object.keys(tally).filter((i) => tally[i] === maxVotes).map(Number);
       const finalAccused = leaders.length === 1 ? leaders[0] : null;
 
-      if (finalAccused === null) {
-        // Tie — restart clue round
-        currentRoom.clues = [];
-        currentRoom.currentPlayerIndex = 0;
-        currentRoom.votes = {};
-        currentRoom.phase = "clue";
-        startClueTurn(currentRoom);
-      } else {
-        const accusedIsImposter = finalAccused === currentRoom.imposterIndex;
-        const resultPayload = {
-          tally,
-          accusedIndex: finalAccused,
-          accusedName: currentRoom.players[finalAccused].name,
-          accusedIsImposter,
-          imposterName: currentRoom.players[currentRoom.imposterIndex].name,
-          secretWord: currentRoom.secretWord,
-          imposterGuessedCorrectly: null,
-        };
-        broadcast(currentRoom, { type: "phase_change", phase: "result", ...resultPayload });
-        if (accusedIsImposter) {
-          currentRoom.phase = "imposterGuess";
-          broadcast(currentRoom, { type: "phase_change", phase: "imposterGuess", ...resultPayload });
-        } else {
-          currentRoom.phase = "result";
-        }
-      }
+      showTallyThen(currentRoom, tally, finalAccused);
     }
 
     // IMPOSTER GUESS
@@ -427,6 +466,7 @@ wss.on("connection", (ws) => {
 
     if (currentRoom.players.length === 0) {
       if (currentRoom.clueTimer) clearTimeout(currentRoom.clueTimer);
+      if (currentRoom.tallyTimer) clearTimeout(currentRoom.tallyTimer);
       delete rooms[currentRoom.code];
       return;
     }

@@ -131,7 +131,7 @@ input, select, textarea {
   transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
 }
 
-.btn:active:not(:disabled) { transform: translateY(1px); }
+/* press effect handled by the global button rule at the bottom of this file */
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .btn-ink     { background: var(--color-ink); color: #FFF; }
@@ -542,7 +542,7 @@ select.input {
   border-color: rgba(0, 0, 0, 0.2);
 }
 
-.animal-pick:active { transform: scale(0.95); }
+/* press effect handled by the global button rule */
 
 .animal-pick.selected {
   border-color: var(--color-mint);
@@ -742,7 +742,7 @@ select.input {
   text-align: center;
 }
 
-.choice-card:active { transform: scale(0.98); }
+/* press effect handled by the global card press rule */
 
 .choice-card .icon { font-size: 24px; line-height: 1; }
 .choice-card .label { font-size: 13px; font-weight: 500; }
@@ -958,4 +958,1443 @@ select.input {
   color: rgba(255,255,255,0.55);
   text-align: center;
   line-height: 1.5;
+}
+
+/* =========================================================
+   Global button press effects
+   Idle/release: bouncy spring-back (overshoot)
+   Press:        quick downward squish
+   ========================================================= */
+
+button,
+.btn {
+  cursor: pointer;
+  transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.15s ease,
+              opacity 0.15s ease,
+              border-color 0.15s ease,
+              color 0.15s ease,
+              box-shadow 80ms ease;
+}
+
+button:active:not(:disabled),
+.btn:active:not(:disabled) {
+  transform: scale(0.92);
+  box-shadow: none;
+  transition: transform 60ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* Card-style choices get a softer press + brightness dip
+   (vote choice cards on the Majority Vote screen, suspect rows on the
+   Exile Vote screen — they're button elements wrapping a whole card). */
+.choice-card:active:not(:disabled),
+.suspect:active:not([disabled]) {
+  transform: scale(0.96);
+  filter: brightness(0.95);
+  transition: transform 60ms cubic-bezier(0.36, 0.07, 0.19, 0.97),
+              filter 60ms ease;
+}
+
+/* =========================================================
+   GAME STAGE — persistent table scene
+   ========================================================= */
+
+.app-stage {
+  background: #0E0A1A;
+  align-items: flex-start;
+  padding-top: 24px;
+}
+
+.stage-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.game-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 18px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 38%, #3A2C52 0%, #261E3C 45%, #1A1429 100%);
+  isolation: isolate;
+  box-shadow: 0 12px 40px -16px rgba(0, 0, 0, 0.6);
+}
+
+/* Floor (purple/wood plank wall behind the table) */
+.stage-floor {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 40%;
+  background: linear-gradient(180deg, #2A2142, #221B36);
+  border-top: 2px solid rgba(255, 255, 255, 0.05);
+  z-index: 0;
+}
+
+/* Hanging lamp */
+.lamp-cord {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 14%;
+  background: #4A3F6B;
+  z-index: 1;
+}
+
+.lamp-shade {
+  position: absolute;
+  left: 50%;
+  top: 13%;
+  transform: translateX(-50%);
+  width: 58px;
+  height: 22px;
+  background: linear-gradient(180deg, #E8C863, #C09F40);
+  clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  z-index: 2;
+}
+
+.lamp-glow {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  transform: translate(-50%, -50%);
+  width: 70%;
+  height: 70%;
+  pointer-events: none;
+  background: radial-gradient(ellipse 50% 60% at 50% 50%, rgba(255, 225, 140, 0.22), transparent 70%);
+  z-index: 1;
+}
+
+/* Round table — stacked ellipses for the 3D edge look */
+.table-shadow {
+  position: absolute;
+  left: 50%; top: 60%;
+  transform: translate(-50%, -50%);
+  width: 54%; height: 24%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.2) 70%, transparent);
+  border-radius: 50%;
+  filter: blur(4px);
+  z-index: 2;
+}
+
+.table-side {
+  position: absolute;
+  left: 50%; top: 57%;
+  transform: translate(-50%, -50%);
+  width: 50%; height: 22%;
+  background: #3F2912;
+  border-radius: 50%;
+  z-index: 3;
+}
+
+.table-top {
+  position: absolute;
+  left: 50%; top: 55%;
+  transform: translate(-50%, -50%);
+  width: 50%; height: 22%;
+  background:
+    radial-gradient(ellipse at 50% 30%, #7A532A 0%, #6B4621 55%, #5A3818 100%);
+  border: 2px solid #855A2C;
+  border-radius: 50%;
+  z-index: 4;
+}
+
+.table-felt {
+  position: absolute;
+  left: 50%; top: 55%;
+  transform: translate(-50%, -50%);
+  width: 41%; height: 16.5%;
+  background: radial-gradient(ellipse at center, #347049 0%, #245038 60%, #1D4530 100%);
+  border-radius: 50%;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.35);
+  z-index: 5;
+}
+
+/* Deck of cards on the felt center */
+.table-deck {
+  position: absolute;
+  left: 50%; top: 56%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+}
+
+.deck-card {
+  width: 17px;
+  height: 23px;
+  background: #8B6FD4;
+  border: 1px solid #6B4FB0;
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.deck-card-stacked {
+  position: absolute;
+  top: -2px; left: 4px;
+  transform: rotate(-8deg);
+}
+
+/* Seats — disc and name are independently positioned so the disc's
+   center anchors precisely at (seat.left, seat.top). Overlay accents
+   (glow, tap targets) use the same coords and line up exactly. */
+.seat-wrap {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 8;
+  pointer-events: none;
+}
+
+.seat-disc {
+  position: relative;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.22);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 6px 12px -6px rgba(0, 0, 0, 0.6);
+}
+
+.seat-crown {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-12deg);
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.seat-name {
+  position: absolute;
+  transform: translate(-50%, 0);
+  font-family: var(--font);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  max-width: 86px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  z-index: 8;
+  pointer-events: none;
+}
+
+.seat-disc.seat-exiled { animation: seatShake 0.6s ease-in-out 0.4s; }
+
+@keyframes seatShake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-4px) rotate(-3deg); }
+  40%      { transform: translateX(4px) rotate(3deg); }
+  60%      { transform: translateX(-3px) rotate(-2deg); }
+  80%      { transform: translateX(3px) rotate(2deg); }
+}
+
+/* =========================================================
+   PHASE OVERLAY — sits above the stage
+   ========================================================= */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  animation: overlayFade 200ms ease both;
+}
+
+.overlay > * { pointer-events: auto; }
+
+@keyframes overlayFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.overlay-top {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  /* Intentionally no `right` — keeps the top-right corner free for the
+     role badge. Contents (pill, timer, top-stack) flow left-to-right. */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 12;
+  max-width: calc(100% - 150px);
+}
+
+.top-pill {
+  background: rgba(20, 14, 32, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #FDFAF4;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pill-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--color-yellow);
+  box-shadow: 0 0 8px var(--color-yellow);
+}
+
+.top-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.top-subtitle {
+  background: rgba(20, 14, 32, 0.65);
+  color: rgba(255, 255, 255, 0.78);
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.overlay-bottom {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.overlay-bottom-row {
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
+}
+
+.overlay-bottom-row .btn { flex: 1; }
+
+.overlay-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1.5px dashed var(--color-purple);
+  border-radius: 12px;
+  padding: 4px 4px 4px 12px;
+}
+
+.overlay-input input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  height: 36px;
+  font-size: 14px;
+  color: var(--color-ink);
+}
+
+.btn-pill {
+  width: auto;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  border: none;
+}
+
+.overlay-status {
+  background: rgba(20, 14, 32, 0.85);
+  color: #FDFAF4;
+  font-size: 13px;
+  padding: 9px 14px;
+  border-radius: var(--radius-pill);
+  text-align: center;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.overlay-status strong {
+  color: var(--color-yellow);
+  font-weight: 600;
+}
+
+.overlay-caption {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  text-align: center;
+  font-weight: 500;
+}
+
+/* Dim layer — for center-card overlays and vote phase */
+.overlay-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 78% 72% at 50% 48%,
+    rgba(12, 8, 22, 0.32),
+    rgba(10, 6, 20, 0.68)
+  );
+  animation: overlayFade 200ms ease both;
+}
+
+.overlay-dim-vote {
+  background: radial-gradient(
+    ellipse 80% 72% at 50% 48%,
+    rgba(12, 8, 22, 0.28),
+    rgba(10, 6, 20, 0.62)
+  );
+}
+
+/* Seat-anchored accents (positioned with the same % coords as seats) */
+.seat-glow {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 13;
+}
+
+.seat-glow-active {
+  border: 3px solid var(--color-yellow);
+  box-shadow: 0 0 0 4px rgba(245, 200, 66, 0.18), 0 0 28px rgba(245, 200, 66, 0.5);
+  animation: seatPulseYellow 1.4s ease-in-out infinite;
+}
+
+.seat-glow-pick {
+  border: 3px solid #B49BEC;
+  box-shadow: 0 0 0 4px rgba(139, 111, 212, 0.22), 0 0 28px rgba(139, 111, 212, 0.55);
+  animation: seatPulsePurple 1.3s ease-in-out infinite;
+}
+
+@keyframes seatPulseYellow {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(245, 200, 66, 0.10), 0 0 22px rgba(245, 200, 66, 0.42); }
+  50%      { box-shadow: 0 0 0 6px rgba(245, 200, 66, 0.22), 0 0 36px rgba(245, 200, 66, 0.62); }
+}
+@keyframes seatPulsePurple {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(139, 111, 212, 0.12), 0 0 22px rgba(139, 111, 212, 0.48); }
+  50%      { box-shadow: 0 0 0 6px rgba(139, 111, 212, 0.26), 0 0 36px rgba(139, 111, 212, 0.66); }
+}
+
+/* Tap target over a seat (vote phase) */
+.seat-tap {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  z-index: 14;
+  cursor: pointer;
+  padding: 0;
+}
+
+.seat-tap-self { cursor: default; }
+.seat-tap:disabled { cursor: default; }
+
+/* The global button:active rule replaces transform with scale(0.92), which
+   would knock seat-tap off its translate(-50%,-50%) centering and move the
+   element out from under the user's finger before mouseup fires (so the
+   click never lands). Preserve the centering while still scaling. */
+.seat-tap:active:not(:disabled) {
+  transform: translate(-50%, -50%) scale(0.94);
+  transition: transform 60ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* "your pick" tag under a selected suspect */
+.seat-tag {
+  position: absolute;
+  transform: translate(-50%, 0);
+  z-index: 15;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.seat-tag-pick {
+  background: var(--color-purple);
+  color: #FFF;
+}
+
+/* Clue speech bubble */
+.clue-bubble {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 15;
+  max-width: 130px;
+  padding: 6px 10px;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  border-radius: 14px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  word-wrap: break-word;
+  pointer-events: none;
+  animation: bubbleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes bubbleIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Bubble tails (a tiny triangle pointing toward the seat) */
+.clue-bubble::after {
+  content: "";
+  position: absolute;
+  width: 0; height: 0;
+  border: 6px solid transparent;
+}
+
+.bubble-below::after {
+  /* bubble sits below seat → tail points UP */
+  top: -10px;
+  border-bottom-color: var(--color-cream);
+  border-top: 0;
+}
+
+.bubble-above::after {
+  /* bubble sits above seat → tail points DOWN */
+  bottom: -10px;
+  border-top-color: var(--color-cream);
+  border-bottom: 0;
+}
+
+.bubble-left::after  { left: 14px; right: auto; }
+.bubble-right::after { right: 14px; left: auto; }
+
+.clue-bubble-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+}
+.clue-bubble-typing > span {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--color-ink-light);
+  animation: typingDot 1s ease-in-out infinite;
+}
+.clue-bubble-typing > span:nth-child(2) { animation-delay: 0.15s; }
+.clue-bubble-typing > span:nth-child(3) { animation-delay: 0.30s; }
+
+@keyframes typingDot {
+  0%, 100% { transform: translateY(0); opacity: 0.45; }
+  40%      { transform: translateY(-3px); opacity: 1; }
+}
+
+/* =========================================================
+   CENTER-CARD OVERLAYS — role reveal, result, imposter guess
+   ========================================================= */
+
+.overlay-card { display: flex; align-items: center; justify-content: center; }
+
+.reveal-card,
+.result-card,
+.guess-overlay-card {
+  position: relative;
+  z-index: 16;
+  width: 86%;
+  max-width: 320px;
+  padding: 20px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  animation: cardPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes cardPop {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.reveal-card-agent {
+  background: var(--color-mint-soft);
+  border: 2px solid var(--color-mint);
+  color: var(--color-ink);
+}
+
+.reveal-card-imposter {
+  background: var(--color-navy);
+  border: 2px solid var(--color-red);
+  color: #FFF;
+}
+
+.reveal-disc {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.22);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  line-height: 1;
+}
+
+.reveal-disc-md { width: 56px; height: 56px; font-size: 32px; }
+.reveal-disc-sm { width: 38px; height: 38px; font-size: 22px; border-width: 2px; }
+.reveal-disc-wolf { box-shadow: 0 0 0 4px rgba(224, 90, 90, 0.18); }
+
+.reveal-label {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-light);
+  margin: 4px 0 0;
+}
+
+.reveal-card-imposter .reveal-label { color: rgba(255, 255, 255, 0.55); }
+
+.reveal-word {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--color-mint-ink);
+  letter-spacing: 1px;
+  margin: 2px 0 4px;
+}
+
+.reveal-small {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink-light);
+  line-height: 1.45;
+  margin: 4px 0;
+}
+.reveal-small-light { color: rgba(255, 255, 255, 0.7); }
+
+.reveal-tiny {
+  font-size: 12px;
+  color: var(--color-ink-light);
+  margin: 0;
+}
+.reveal-tiny-light { color: rgba(255, 255, 255, 0.5); }
+
+.reveal-ready-btn { margin-top: 8px; }
+
+.reveal-waiting {
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink-light);
+  margin: 8px 0 0;
+  animation: blink 1.6s ease-in-out infinite;
+}
+
+.reveal-card-imposter .reveal-waiting { color: rgba(255, 255, 255, 0.65); }
+
+/* Result card on navy */
+.result-card {
+  background: var(--color-navy);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  color: #FFF;
+}
+
+.result-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.result-stage-enter { animation: cardPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+.spinner-light {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-top-color: #FFF;
+  animation: spin 0.9s linear infinite;
+}
+
+.result-caption {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 500;
+  text-align: center;
+}
+
+.result-label {
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.result-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: #FFF;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+.verdict-pill {
+  margin-top: 4px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  width: 100%;
+}
+
+.verdict-good {
+  background: var(--color-red);
+  color: #FFF;
+}
+
+.verdict-bad {
+  background: rgba(224, 90, 90, 0.18);
+  color: #FECDD3;
+  border: 1px solid rgba(224, 90, 90, 0.4);
+}
+
+.identity-strip {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 9px 12px;
+}
+
+.identity-lines { display: flex; flex-direction: column; gap: 1px; align-items: flex-start; }
+.identity-label {
+  font-family: var(--font);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.identity-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: #FFF;
+}
+
+.secret-strip {
+  width: 100%;
+  background: rgba(245, 200, 66, 0.10);
+  border: 1px solid rgba(245, 200, 66, 0.32);
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.secret-strip-word {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-yellow);
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
+.winner-pill {
+  margin-top: 4px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-align: center;
+}
+
+.winner-agents   { background: var(--color-mint);   color: #FFF; }
+.winner-imposter { background: var(--color-red);    color: #FFF; }
+.winner-steal    { background: var(--color-yellow); color: var(--color-ink); }
+
+/* Imposter Guess center card */
+.guess-overlay-card {
+  background: var(--color-navy);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  color: #FFF;
+}
+
+.guess-helper {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.guess-helper-tiny {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.guess-input-card {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  padding: 6px;
+}
+
+.guess-input-card input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #FFF;
+  text-align: center;
+  font-size: 16px;
+  height: 38px;
+  font-weight: 500;
+}
+
+.guess-input-card input::placeholder { color: rgba(255, 255, 255, 0.4); }
+
+.dots-row {
+  display: inline-flex;
+  gap: 6px;
+}
+.dots-row span {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  animation: typingDot 1s ease-in-out infinite;
+}
+.dots-row span:nth-child(2) { animation-delay: 0.15s; }
+.dots-row span:nth-child(3) { animation-delay: 0.30s; }
+
+/* Skip button (top-right corner of stage) */
+.skip-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 17;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.skip-btn:hover { background: rgba(255, 255, 255, 0.14); color: #FFF; }
+
+/* Role badge re-positioning when on the stage — top-right, above overlay.
+   (Was bottom-right, but that overlapped the Send button on the clue input.) */
+.stage-wrap .role-badge {
+  position: absolute;
+  top: 12px;
+  bottom: auto;
+  right: 12px;
+  left: auto;
+  transform: none;
+  z-index: 50;
+  max-width: 180px;
+}
+
+/* Override the page-level "app-with-badge" top padding for stage layouts */
+.app-stage.app-with-badge { padding-top: 24px; }
+
+/* =========================================================
+   CLUE PHASE — corner badges + pop-up window
+   ========================================================= */
+
+/* Corner: countdown orb (top-left) */
+.clue-timer-orb {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 18;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #221B36;
+  border: 3px solid var(--color-orange);
+  box-shadow: 0 6px 20px -6px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #FFF;
+  pointer-events: none;
+}
+
+.clue-timer-orb-value {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.clue-timer-orb-label {
+  font-family: var(--font);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+.clue-timer-orb.danger {
+  border-color: var(--color-red);
+  animation: orbPulse 0.6s ease-in-out infinite;
+}
+
+.clue-timer-orb.danger .clue-timer-orb-value { color: var(--color-red); }
+.clue-timer-orb.danger .clue-timer-orb-label { color: rgba(255, 200, 200, 0.7); }
+
+@keyframes orbPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+
+/* Corner: keyword badge (top-right) */
+.clue-keyword-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 18;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #1A1429;
+  border: 1.5px solid var(--color-yellow);
+  border-radius: 14px;
+  padding: 8px 14px 8px 10px;
+  box-shadow: 0 6px 20px -6px rgba(0, 0, 0, 0.5);
+  max-width: 200px;
+  pointer-events: none;
+}
+
+.clue-keyword-badge.imposter {
+  border-color: var(--color-red);
+}
+
+.clue-keyword-emoji {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.clue-keyword-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.clue-keyword-label {
+  font-family: var(--font);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.clue-keyword-word {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-yellow);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.clue-keyword-word.imposter { color: var(--color-red); }
+
+/* The clue pop-up window (centered) */
+.clue-window {
+  position: relative;
+  z-index: 16;
+  width: 92%;
+  max-width: 350px;
+  background: #FDFAF4;
+  border-radius: 18px;
+  box-shadow: 0 18px 50px -16px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: cardPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Header */
+.clue-window-header {
+  background: #F5ECD7;
+  padding: 12px 16px 14px;
+  border-bottom: 1px solid rgba(42, 37, 32, 0.06);
+}
+
+.clue-window-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.clue-window-eyebrow {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.clue-window-counter {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-ink-light);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.clue-window-turn {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.clue-window-turn strong {
+  font-weight: 600;
+  color: var(--color-purple);
+}
+
+/* Log */
+.clue-window-log {
+  padding: 12px 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.clue-window-log::-webkit-scrollbar { width: 4px; }
+.clue-window-log::-webkit-scrollbar-thumb {
+  background: rgba(42, 37, 32, 0.18);
+  border-radius: 2px;
+}
+
+.clue-window-label {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-light);
+  margin: 0;
+}
+
+.clue-window-empty {
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--color-ink-light);
+  font-style: italic;
+  text-align: center;
+  margin: 6px 0;
+}
+
+.clue-window-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.clue-window-avatar {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.clue-window-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.clue-window-name {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-ink-light);
+  letter-spacing: 0.02em;
+}
+
+.clue-window-quote {
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--color-ink);
+  font-weight: 500;
+  word-wrap: break-word;
+}
+
+.clue-window-silence {
+  font-family: var(--font);
+  font-size: 13px;
+  color: rgba(42, 37, 32, 0.45);
+  font-style: italic;
+}
+
+/* Input zone */
+.clue-window-input {
+  padding: 12px 16px 14px;
+  border-top: 1px solid rgba(42, 37, 32, 0.08);
+  background: #FFF;
+}
+
+.clue-window-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.clue-window-input-row input {
+  flex: 1;
+  background: #FFF;
+  border: 1.5px solid rgba(139, 111, 212, 0.4);
+  border-radius: 12px;
+  outline: none;
+  height: 44px;
+  padding: 0 14px;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-ink);
+  min-width: 0;
+}
+
+.clue-window-input-row input::placeholder { color: rgba(42, 37, 32, 0.4); }
+.clue-window-input-row input:focus { border-color: var(--color-purple); }
+
+.clue-window-send {
+  flex-shrink: 0;
+  background: var(--color-purple);
+  color: #FFF;
+  border: none;
+  border-radius: 12px;
+  height: 44px;
+  min-width: 68px;
+  padding: 0 16px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.clue-window-helper {
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--color-ink-light);
+  text-align: center;
+  margin: 9px 0 0;
+  letter-spacing: 0.01em;
+}
+
+.clue-window-waiting {
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--color-ink-light);
+  text-align: center;
+  font-weight: 500;
+  margin: 0;
+  padding: 6px 0;
+}
+
+.clue-window-waiting strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+/* Mobile: keep the corner badges from crowding the window on small screens */
+@media (max-width: 380px) {
+  .clue-keyword-badge { max-width: 160px; padding: 7px 10px 7px 8px; gap: 7px; }
+  .clue-keyword-word { font-size: 13px; max-width: 110px; }
+  .clue-timer-orb { width: 50px; height: 50px; }
+  .clue-timer-orb-value { font-size: 19px; }
+}
+
+/* =========================================================
+   VOTE TALLY card (center-card overlay, between vote and result)
+   ========================================================= */
+
+.tally-card {
+  position: relative;
+  z-index: 16;
+  width: 90%;
+  max-width: 340px;
+  padding: 20px;
+  border-radius: 18px;
+  background: #221B36;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14px 44px -14px rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: cardPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.tally-card-tie { border-color: rgba(245, 200, 66, 0.28); }
+
+.tally-eyebrow {
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  margin: 0;
+}
+
+.tally-emoji {
+  font-size: 28px;
+  line-height: 1;
+  text-align: center;
+}
+
+.tally-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-cream);
+  text-align: center;
+  margin: 0;
+}
+
+.tally-title-tie {
+  color: var(--color-yellow);
+  font-size: 22px;
+}
+
+.tally-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tally-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tally-row-faded { opacity: 0.45; }
+
+.tally-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tally-avatar {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.tally-avatar-sm {
+  width: 28px;
+  height: 28px;
+  font-size: 15px;
+  border-width: 1.5px;
+}
+
+.tally-name {
+  flex: 1;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.92);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.tally-chip {
+  font-family: var(--font);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.tally-chip-suspect { background: var(--color-red); color: #FFF; }
+.tally-chip-tied    { background: var(--color-yellow); color: var(--color-ink); }
+
+.tally-count {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: #FFF;
+  font-variant-numeric: tabular-nums;
+  margin-left: 4px;
+  min-width: 18px;
+  text-align: right;
+}
+
+.tally-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.tally-fill {
+  height: 100%;
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.42s cubic-bezier(0.34, 1.2, 0.5, 1);
+}
+
+.tally-fill-red    { background: var(--color-red); }
+.tally-fill-purple { background: var(--color-purple); }
+.tally-fill-yellow { background: var(--color-yellow); box-shadow: 0 0 8px rgba(245, 200, 66, 0.45); }
+.tally-fill-faded  { background: rgba(139, 111, 212, 0.4); }
+
+.tally-zero-row {
+  font-family: var(--font);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+.tally-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 2px 0;
+}
+
+.tally-footer-winner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.tally-footer-text {
+  font-family: var(--font);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tally-footer-text strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: #FFF;
+}
+
+.tally-footer-tie { display: flex; flex-direction: column; gap: 4px; }
+
+.tally-footer-main {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-yellow);
+  text-align: center;
+  margin: 0;
+}
+
+.tally-footer-sub {
+  font-family: var(--font);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  text-align: center;
+  margin: 0;
+}
+
+.tally-countdown {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--color-yellow);
+  font-variant-numeric: tabular-nums;
+  min-width: 14px;
+  text-align: center;
+}
+
+/* Mobile tweaks — make text on the table readable when stage is small */
+@media (max-width: 420px) {
+  .seat-name { font-size: 10px; max-width: 70px; }
+  .clue-bubble { font-size: 11px; max-width: 110px; }
+  .top-pill { font-size: 11px; padding: 6px 11px; }
+  .overlay-status { font-size: 12px; }
+  .reveal-card, .result-card, .guess-overlay-card { width: 92%; }
 }
