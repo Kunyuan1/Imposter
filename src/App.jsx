@@ -93,6 +93,12 @@ function App() {
         setPhase("majorityVote");
       }
 
+      else if (newPhase === "majorityResult") {
+        // Carries yesVotes / noVotes / isMajorityYes / majorityResultDurationMs
+        setGame(rest);
+        setPhase("majorityResult");
+      }
+
       else if (newPhase === "vote") {
         setGame(rest);
         setVotedPlayers([]);
@@ -221,7 +227,7 @@ function App() {
     game.players[game.currentPlayerIndex] === playerName;
 
   // All gameplay phases keep the stage mounted underneath the overlay
-  const inGamePhase = ["roleReveal", "clue", "majorityVote", "vote", "tally", "imposterGuess", "result"].includes(phase);
+  const inGamePhase = ["roleReveal", "clue", "majorityVote", "majorityResult", "vote", "tally", "imposterGuess", "result"].includes(phase);
   const isHost = host === playerName;
 
   const appClass =

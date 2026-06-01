@@ -37,6 +37,14 @@ function getRandomItem(items) {
   return items[Math.floor(Math.random() * items.length)];
 }
 
+// Pick a uniformly-random index into `items` (0..items.length-1 inclusive).
+// Used for selections that MUST be unbiased — imposter assignment and the
+// random starting player for each clue round. No special-casing of host,
+// no filtering — every player has the same chance.
+function pickRandomIndex(items) {
+  return Math.floor(Math.random() * items.length);
+}
+
 // Standard room_update payload — names + host + per-player animal choices.
 function roomUpdatePayload(room) {
   const animals = {};
@@ -60,11 +68,6 @@ function startClueTurn(room) {
   room.turnEndsAt = Date.now() + CLUE_TURN_MS; // server-side enforcement only
   room.clueTimer = setTimeout(() => autoAdvanceClue(room), CLUE_TURN_MS + GRACE_MS);
 
-  // Bump the round counter when starting fresh (player 0, empty log)
-  if (room.currentPlayerIndex === 0 && room.clues.length === 0) {
-    room.clueRound = (room.clueRound || 0) + 1;
-  }
-
   // Send a RELATIVE duration so clients aren't affected by clock skew.
   // Each client computes its own endsAt = Date.now() + clueDurationMs on receipt.
   broadcast(room, {
@@ -76,6 +79,19 @@ function startClueTurn(room) {
     clueDurationMs: CLUE_TURN_MS,
     clueRound: room.clueRound || 1,
   });
+}
+
+// Begin a fresh clue round: clear the log, pick a RANDOM starting player
+// (no host preference, no carry-over from earlier rounds), bump the round
+// counter, and kick off the first turn. Use this for the initial round
+// AND every loop-back (majority "no", vote tie).
+function startNewClueRound(room) {
+  if (!room.players || room.players.length === 0) return;
+  room.clues = [];
+  room.currentPlayerIndex = pickRandomIndex(room.players);
+  room.clueRound = (room.clueRound || 0) + 1;
+  room.phase = "clue";
+  startClueTurn(room);
 }
 
 function autoAdvanceClue(room) {
@@ -118,12 +134,9 @@ function showTallyThen(room, tally, finalAccused) {
   room.tallyTimer = setTimeout(() => {
     room.tallyTimer = null;
     if (isTie) {
-      // No one exiled — start a fresh clue round
-      room.clues = [];
-      room.currentPlayerIndex = 0;
+      // No one exiled — start a fresh clue round with a new random starter
       room.votes = {};
-      room.phase = "clue";
-      startClueTurn(room);
+      startNewClueRound(room);
       return;
     }
 
@@ -147,15 +160,53 @@ function showTallyThen(room, tally, finalAccused) {
   }, tallyMs);
 }
 
+// --- MAJORITY DECISION → quick yes/no result card, then advance ---
+const MAJORITY_RESULT_MS = 2200;
+
+function showMajorityResultThen(room, yesVotes, noVotes, isMajorityYes) {
+  if (room.majorityResultTimer) clearTimeout(room.majorityResultTimer);
+
+  room.phase = "majorityResult";
+
+  broadcast(room, {
+    type: "phase_change",
+    phase: "majorityResult",
+    yesVotes,
+    noVotes,
+    isMajorityYes,
+    players: room.players.map((p) => p.name),
+    majorityResultDurationMs: MAJORITY_RESULT_MS,
+  });
+
+  room.majorityResultTimer = setTimeout(() => {
+    room.majorityResultTimer = null;
+    if (isMajorityYes) {
+      room.votes = {};
+      room.currentPlayerIndex = 0;
+      room.phase = "vote";
+      broadcast(room, {
+        type: "phase_change",
+        phase: "vote",
+        currentPlayerIndex: 0,
+        players: room.players.map((p) => p.name),
+      });
+    } else {
+      // Not enough YES votes — back to the clues with a new random starter
+      startNewClueRound(room);
+    }
+  }, MAJORITY_RESULT_MS);
+}
+
 function advanceClueTurn(room) {
   if (room.clueTimer) {
     clearTimeout(room.clueTimer);
     room.clueTimer = null;
   }
 
-  const nextIndex = room.currentPlayerIndex + 1;
-  if (nextIndex >= room.players.length) {
-    room.currentPlayerIndex = 0;
+  // The clue for the current player has already been pushed by the caller
+  // (submit_clue or autoAdvanceClue). Once every player has submitted, the
+  // round is done — regardless of where the random starting index was.
+  if (room.clues.length >= room.players.length) {
     room.phase = "majorityVote";
     broadcast(room, {
       type: "phase_change",
@@ -163,10 +214,13 @@ function advanceClueTurn(room) {
       clues: room.clues,
       players: room.players.map((p) => p.name),
     });
-  } else {
-    room.currentPlayerIndex = nextIndex;
-    startClueTurn(room);
+    return;
   }
+
+  // Continue clockwise around the table, wrapping at the end so we visit
+  // every seat starting from the random starting index.
+  room.currentPlayerIndex = (room.currentPlayerIndex + 1) % room.players.length;
+  startClueTurn(room);
 }
 
 // --- WORD LIST ---
@@ -186,7 +240,9 @@ function startGame(room, chosenCategory) {
     ? chosenCategory
     : getRandomItem(categoryNames);
   const secretWord = getRandomItem(words[category]);
-  const imposterIndex = Math.floor(Math.random() * room.players.length);
+  // Imposter is picked uniformly from ALL players (host included). Every
+  // player has an equal chance — no host bias.
+  const imposterIndex = pickRandomIndex(room.players);
 
   room.gameStarted = true;
   room.category = category;
@@ -335,10 +391,8 @@ wss.on("connection", (ws) => {
         // Check if all players have confirmed
         if (currentRoom.confirmedRoles.size >= currentRoom.players.length) {
             currentRoom.confirmedRoles = new Set();
-            currentRoom.currentPlayerIndex = 0;
-            currentRoom.clues = [];
-            currentRoom.phase = "clue";
-            startClueTurn(currentRoom);
+            // Random starting player for the very first clue round
+            startNewClueRound(currentRoom);
         } else {
             // Still waiting for other players — do nothing
         }
@@ -370,25 +424,10 @@ wss.on("connection", (ws) => {
 
       if (currentRoom.majorityVotes.length >= currentRoom.players.length) {
         const yesVotes = currentRoom.majorityVotes.filter(v => v === true).length;
+        const noVotes  = currentRoom.majorityVotes.length - yesVotes;
         const isMajorityYes = yesVotes > currentRoom.players.length / 2;
         currentRoom.majorityVotes = [];
-
-        if (isMajorityYes) {
-          currentRoom.votes = {};
-          currentRoom.currentPlayerIndex = 0;
-          currentRoom.phase = "vote";
-          broadcast(currentRoom, {
-            type: "phase_change",
-            phase: "vote",
-            currentPlayerIndex: 0,
-            players: currentRoom.players.map((p) => p.name),
-          });
-        } else {
-          currentRoom.clues = [];
-          currentRoom.currentPlayerIndex = 0;
-          currentRoom.phase = "clue";
-          startClueTurn(currentRoom);
-        }
+        showMajorityResultThen(currentRoom, yesVotes, noVotes, isMajorityYes);
       }
     }
 
@@ -467,6 +506,7 @@ wss.on("connection", (ws) => {
     if (currentRoom.players.length === 0) {
       if (currentRoom.clueTimer) clearTimeout(currentRoom.clueTimer);
       if (currentRoom.tallyTimer) clearTimeout(currentRoom.tallyTimer);
+      if (currentRoom.majorityResultTimer) clearTimeout(currentRoom.majorityResultTimer);
       delete rooms[currentRoom.code];
       return;
     }

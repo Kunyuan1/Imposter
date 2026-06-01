@@ -19,6 +19,7 @@ export default function PhaseOverlay(props) {
     case "roleReveal":    return <RoleRevealOverlay {...props} />;
     case "clue":          return <ClueOverlay {...props} />;
     case "majorityVote":  return <MajorityOverlay {...props} />;
+    case "majorityResult":return <MajorityResultOverlay {...props} />;
     case "vote":          return <VoteOverlay {...props} />;
     case "tally":         return <TallyOverlay {...props} />;
     case "imposterGuess": return <ImposterGuessOverlay {...props} />;
@@ -302,6 +303,79 @@ function MajorityOverlay({ onMajorityDecision }) {
         {vote !== null && (
           <p className="overlay-status">vote cast — waiting for others</p>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ──────────────── Majority Vote Quick Result ───────────────────
+
+function MajorityResultOverlay({ game }) {
+  const yesVotes = (game?.yesVotes | 0) || 0;
+  const noVotes  = (game?.noVotes  | 0) || 0;
+  const isYes    = !!game?.isMajorityYes;
+  const duration = game?.majorityResultDurationMs ?? 2200;
+
+  const total = yesVotes + noVotes;
+  const yesPct = total ? (yesVotes / total) * 100 : 50;
+  const noPct  = total ? (noVotes  / total) * 100 : 50;
+
+  // Bar widths animate from 50/50 → final on mount
+  const [animated, setAnimated] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setAnimated(true), 60);
+    return () => clearTimeout(id);
+  }, []);
+
+  // Footer countdown
+  const [secondsLeft, setSecondsLeft] = useState(Math.ceil(duration / 1000));
+  useEffect(() => {
+    const startedAt = Date.now();
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((duration - (Date.now() - startedAt)) / 1000));
+      setSecondsLeft(remaining);
+    };
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [duration]);
+
+  return (
+    <div className="overlay overlay-card">
+      <div className="overlay-dim" />
+      <div className={`majres-card ${isYes ? "majres-card-yes" : "majres-card-no"}`}>
+        <div className={`majres-icon ${isYes ? "majres-icon-yes" : "majres-icon-no"}`} aria-hidden="true">
+          {isYes ? "🔍" : "🔄"}
+        </div>
+        <p className="majres-eyebrow">majority vote</p>
+        <h2 className={`majres-title ${isYes ? "majres-title-yes" : "majres-title-no"}`}>
+          {isYes ? "accuse!" : "not yet…"}
+        </h2>
+        <p className="majres-subtitle">
+          {isYes ? "the table wants to name a suspect" : "no majority — keep digging"}
+        </p>
+
+        <div className="majres-bar">
+          <div
+            className={`majres-half majres-half-yes ${isYes ? "winner" : "muted"}`}
+            style={{ width: animated ? `${yesPct}%` : "50%" }}
+          >
+            {isYes && <span className="majres-emoji" aria-hidden="true">👍</span>}
+            <span className="majres-count">{yesVotes}</span>
+          </div>
+          <div
+            className={`majres-half majres-half-no ${isYes ? "muted" : "winner"}`}
+            style={{ width: animated ? `${noPct}%` : "50%" }}
+          >
+            {!isYes && <span className="majres-emoji" aria-hidden="true">👎</span>}
+            <span className="majres-count">{noVotes}</span>
+          </div>
+        </div>
+
+        <div className="majres-footer">
+          <span>{isYes ? "picking who to exile in" : "another round of clues in"}</span>
+          <span className="majres-countdown">{secondsLeft}</span>
+        </div>
       </div>
     </div>
   );
