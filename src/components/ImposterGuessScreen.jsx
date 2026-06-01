@@ -1,36 +1,48 @@
 import React, { useState } from "react";
+import AnimalAvatar from "./AnimalAvatar";
 import { useToast } from "./Toast";
 
-export default function ImposterGuessScreen({ imposterName, onGuess }) {
+export default function ImposterGuessScreen({ imposterName, onGuess, players, animals }) {
   const [guess, setGuess] = useState("");
   const showToast = useToast();
 
   function handleSubmit() {
     if (guess.trim() === "") {
-      showToast("Enter your final guess — this is your only shot.");
+      showToast("Enter your final guess.");
       return;
     }
     onGuess(guess);
   }
 
   return (
-    <section className="card">
-      <h1>You've Been Caught!</h1>
-      <p className="subtitle">
-        <strong>{imposterName}</strong>, you have one chance to guess the secret word and steal the win.
+    <div className="screen">
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <AnimalAvatar asWolf size="lg" />
+      </div>
+      <h2 className="q-title" style={{ color: "#FFF" }}>
+        last stand, agent {imposterName}
+      </h2>
+      <p className="small center" style={{ color: "rgba(255,255,255,0.55)" }}>
+        guess the secret word to steal the win
       </p>
 
-      <div className="input-group">
+      <div className="guess-card">
         <input
           type="text"
-          placeholder="Enter your guess..."
+          placeholder="your guess..."
           value={guess}
           onChange={(e) => setGuess(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+          maxLength={30}
+          autoFocus
         />
-        <button type="button" className="primary" onClick={handleSubmit}>
-          Submit Guess
-        </button>
       </div>
-    </section>
+
+      <button type="button" className="btn btn-red" onClick={handleSubmit}>
+        Take the shot
+      </button>
+
+      <p className="helper-light">one chance — make it count</p>
+    </div>
   );
 }

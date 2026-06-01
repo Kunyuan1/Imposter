@@ -1,22 +1,20 @@
 import React from "react";
+import { animalFor, WOLF } from "../utils/animals";
 
 /**
- * Small fixed badge that keeps your role/word visible during in-game phases
- * so players don't forget what they're working with.
+ * Fixed top-center pill that keeps the player's role visible.
+ *   Agent:    "🦊 SUSHI"     (navy bg)
+ *   Imposter: "🐺 IMPOSTER"  (red bg — wolf is the reserved imposter symbol)
  */
-export default function RoleBadge({ role, secretWord }) {
+export default function RoleBadge({ role, secretWord, players, name, animals }) {
   if (!role) return null;
-
   const isImposter = role === "imposter";
+  const emoji = isImposter ? WOLF.emoji : animalFor(players, name, animals).emoji;
 
   return (
-    <div className={`role-badge ${isImposter ? "imposter" : "agent"}`}>
-      <span className="role-badge-tag">
-        {isImposter ? "// role" : "// codeword"}
-      </span>
-      <span className="role-badge-value">
-        {isImposter ? "IMPOSTER" : secretWord}
-      </span>
+    <div className={`role-badge ${isImposter ? "role-badge-imposter" : ""}`}>
+      <span className="emoji" aria-hidden="true">{emoji}</span>
+      <span className="word">{isImposter ? "IMPOSTER" : secretWord}</span>
     </div>
   );
 }

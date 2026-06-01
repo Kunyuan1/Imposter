@@ -29,9 +29,8 @@ export function ToastProvider({ children }) {
       {children}
       <div className="toast-layer" aria-live="polite">
         {toast && (
-          <div key={toast.id} className={`toast toast-${toast.tone}`}>
-            <span className="toast-tag">{toast.tone === "alert" ? "// alert" : "// info"}</span>
-            <span className="toast-msg">{toast.message}</span>
+          <div key={toast.id} className="toast">
+            <span>{toast.message}</span>
           </div>
         )}
       </div>

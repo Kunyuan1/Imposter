@@ -1,62 +1,87 @@
 import React, { useState } from "react";
-import { useToast } from "./Toast";
 
 export default function HomeScreen({ onCreateRoom, onJoinRoom }) {
   const [name, setName] = useState("");
   const [roomCode, setRoomCode] = useState("");
-  const showToast = useToast();
+  const [nameError, setNameError] = useState("");
+  const [codeError, setCodeError] = useState("");
+
+  function clearErrors() {
+    setNameError("");
+    setCodeError("");
+  }
 
   function handleCreate() {
+    clearErrors();
     if (name.trim() === "") {
-      showToast("Identify yourself before entering the network.");
+      setNameError("name your agent first");
       return;
     }
     onCreateRoom(name.trim());
   }
 
   function handleJoin() {
+    clearErrors();
     if (name.trim() === "") {
-      showToast("Identify yourself before entering the network.");
+      setNameError("name your agent first");
       return;
     }
     if (roomCode.trim() === "") {
-      showToast("Enter a room code to join the operation.");
+      setCodeError("enter a room code");
       return;
     }
     onJoinRoom(name.trim(), roomCode.trim().toUpperCase());
   }
 
   return (
-    <section className="card">
-      <h1>Imposter</h1>
-      <p className="subtitle">Enter your name to get started.</p>
-
-      <input
-        type="text"
-        placeholder="Your name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-
-      <div className="actions" style={{ marginTop: "2rem" }}>
-        <button type="button" className="primary" onClick={handleCreate}>
-          Create Room
-        </button>
+    <div className="screen">
+      <div className="home-emoji-row" aria-hidden="true">
+        <span>🐸</span>
+        <span>🐻</span>
+        <span className="disguise-slot">
+          <span className="disguise-cat">🐱</span>
+          <span className="disguise-arrow">→</span>
+          <span className="disguise-wolf">🐺</span>
+        </span>
+        <span>🦌</span>
       </div>
+      <h1 className="home-title">Imposter</h1>
+      <p className="home-subtitle">who's the mole on the team?</p>
+      <div className="thin-divider" />
 
-      <div style={{ marginTop: "1rem" }}>
-        <p className="subtitle">Or join an existing room:</p>
+      <div>
         <input
           type="text"
-          placeholder="Room code (e.g. ABCD)"
-          value={roomCode}
-          onChange={(e) => setRoomCode(e.target.value)}
-          style={{ marginBottom: "0.5rem" }}
+          className={`input ${nameError ? "input-error" : ""}`}
+          placeholder="your agent name..."
+          value={name}
+          onChange={(e) => { setName(e.target.value); if (nameError) setNameError(""); }}
+          maxLength={20}
         />
-        <button type="button" onClick={handleJoin}>
-          Join Room
-        </button>
+        {nameError && <div className="input-error-msg">{nameError}</div>}
       </div>
-    </section>
+
+      <button type="button" className="btn btn-ink" onClick={handleCreate}>
+        Create room
+      </button>
+
+      <div className="or-divider">or</div>
+
+      <div>
+        <input
+          type="text"
+          className={`input ${codeError ? "input-error" : ""}`}
+          placeholder="room code..."
+          value={roomCode}
+          onChange={(e) => { setRoomCode(e.target.value.toUpperCase()); if (codeError) setCodeError(""); }}
+          maxLength={4}
+        />
+        {codeError && <div className="input-error-msg">{codeError}</div>}
+      </div>
+
+      <button type="button" className="btn btn-outline" onClick={handleJoin}>
+        Join room
+      </button>
+    </div>
   );
 }

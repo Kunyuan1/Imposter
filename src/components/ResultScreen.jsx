@@ -1,29 +1,29 @@
 import React, { useEffect, useRef, useState } from "react";
+import AnimalAvatar from "./AnimalAvatar";
 
 /**
- * Multi-stage suspenseful result reveal.
+ * Multi-stage suspense reveal on the navy screen.
  *
  * Stages:
- *   0 — "ANALYZING VOTES..." spinner
- *   1 — reveal who was accused
- *   2 — reveal whether they were the imposter (verdict banner)
- *   3 — reveal the secret word
- *   4 — show winner banner + Play Again button
+ *   0 — "Analyzing votes..." (spinner)
+ *   1 — exiled name
+ *   2 — verdict (caught / innocent)
+ *   3 — true imposter identity + secret word
+ *   4 — winner banner + host/imposter CTA
  */
-export default function ResultScreen({ result, onPlayAgain, onImposterGuess, isHost, isImposter }) {
-  const { accusedName, accusedIsImposter, imposterName, secretWord } = result;
+export default function ResultScreen({ result, onPlayAgain, onImposterGuess, isHost, isImposter, players, animals }) {
+  const { accusedName, accusedIsImposter, imposterName, secretWord, imposterGuess, imposterGuessedCorrectly } = result;
   const [stage, setStage] = useState(0);
   const timersRef = useRef([]);
 
-  // Never let stage move backward (so Skip can't be undone by a pending timer)
   const advanceTo = (n) => setStage((s) => Math.max(s, n));
 
   useEffect(() => {
     timersRef.current = [
-      setTimeout(() => advanceTo(1), 2200),
-      setTimeout(() => advanceTo(2), 4600),
-      setTimeout(() => advanceTo(3), 6800),
-      setTimeout(() => advanceTo(4), 8800),
+      setTimeout(() => advanceTo(1), 2000),
+      setTimeout(() => advanceTo(2), 4000),
+      setTimeout(() => advanceTo(3), 6000),
+      setTimeout(() => advanceTo(4), 8000),
     ];
     return () => timersRef.current.forEach(clearTimeout);
   }, []);
@@ -33,101 +33,100 @@ export default function ResultScreen({ result, onPlayAgain, onImposterGuess, isH
     setStage(4);
   }
 
-  const citizensWin = accusedIsImposter && result.imposterGuessedCorrectly === false;
+  // Outcome resolution
+  const imposterCaughtButNotResolved =
+    accusedIsImposter && imposterGuessedCorrectly === null;
+  const agentsWin = accusedIsImposter && imposterGuessedCorrectly === false;
+  const imposterStole = accusedIsImposter && imposterGuessedCorrectly === true;
+  const imposterWinsByEscape = !accusedIsImposter;
 
   return (
-    <section className={`card result-card ${citizensWin ? "victory" : "defeat"}`}>
-      <h1 className={`title-glow ${citizensWin ? "safe" : "critical"}`}>
-        VERDICT
-      </h1>
+    <div className="screen" style={{ maxWidth: 420 }}>
+      {stage < 4 && (
+        <button type="button" className="skip-btn" onClick={skipToEnd}>
+          skip →
+        </button>
+      )}
 
-      {/* Stage 0 — analyzing */}
       {stage === 0 && (
-        <div className="result-stage analyzing">
-          <p className="subtitle blink">// decrypting ballots</p>
-          <div className="loader-dots" aria-hidden="true">
-            <span></span><span></span><span></span>
-          </div>
+        <div className="spinner-row">
+          <div className="spinner" />
+          <span>analyzing votes...</span>
         </div>
       )}
 
-      {/* Stage 1+ — accused name */}
       {stage >= 1 && (
-        <div className="result-stage reveal-line">
-          <p className="subtitle">Exile target identified:</p>
-          <h2 className="player-highlight glitch-in">{accusedName}</h2>
+        <div className="stage">
+          <AnimalAvatar players={players} animals={animals} name={accusedName} size="xl" />
+          <p className="section-label section-label-light">exiled agent</p>
+          <p className="exiled-name">{accusedName}</p>
         </div>
       )}
 
-      {/* Stage 2+ — was it the imposter? */}
       {stage >= 2 && (
-        <div className={`verdict-banner ${accusedIsImposter ? "good" : "bad"} reveal-line`}>
-          {accusedIsImposter
-            ? "✓ TARGET CONFIRMED — IMPOSTER"
-            : "✗ INNOCENT AGENT EXILED"}
+        <div className={`verdict-banner ${accusedIsImposter ? "caught" : "innocent"} stage`}>
+          {accusedIsImposter ? "confirmed — the imposter" : "innocent agent exiled"}
         </div>
       )}
 
-      {/* Stage 3+ — secret word reveal (only show if imposter already guessed or wasn't caught) */}
-      {stage >= 3 && !(accusedIsImposter && result.imposterGuessedCorrectly === null) && (
-        <div className="result-stage reveal-line">
-          <p className="subtitle">The real imposter was</p>
-          <h2 className="player-highlight glitch-in">{imposterName}</h2>
-          <p className="subtitle" style={{ marginTop: "1rem" }}>The secret word was</p>
-          <p className="secret-word glitch-in">{secretWord}</p>
-          {result.imposterGuess && (
-            <p className="subtitle" style={{ marginTop: "1rem" }}>
-              The imposter guessed: <strong>{result.imposterGuess}</strong>
-            </p>
-          )}
-        </div>
+      {stage >= 3 && !imposterCaughtButNotResolved && (
+        <>
+          <div className="identity-row stage">
+            <AnimalAvatar asWolf size="md" />
+            <div className="lines">
+              <span className="label">the imposter</span>
+              <span className="name">{imposterName}</span>
+            </div>
+          </div>
+
+          <div className="secret-card stage">
+            <div className="label">secret word was</div>
+            <div className="word">{secretWord}</div>
+            {imposterGuess && (
+              <div className="label" style={{ marginTop: 8 }}>
+                their guess: <span style={{ color: "#FFF" }}>{imposterGuess}</span>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
-      {/* Stage 4 — winner + play again */}
       {stage >= 4 && (
-        <div className="result-stage reveal-line">
-          {result.accusedIsImposter && result.imposterGuessedCorrectly === null ? (
+        <div className="stage" style={{ width: "100%" }}>
+          {imposterCaughtButNotResolved ? (
             <>
-              <p className="winner-line bad">IMPOSTER CAUGHT!</p>
-              <p className="subtitle">Give the imposter one final chance to steal the win.</p>
+              <div className="winner-banner winner-imposter">Imposter caught!</div>
               {isImposter ? (
-                <button type="button" className="btn-primary" onClick={onImposterGuess}>
-                  Make Your Last Stand
+                <button type="button" className="btn btn-red" onClick={onImposterGuess}>
+                  Make your last stand
                 </button>
               ) : (
-                <p className="subtitle waiting-line">// awaiting imposter's final guess...</p>
+                <p className="waiting-light">awaiting imposter's final guess...</p>
               )}
             </>
           ) : (
             <>
-              <p className={`winner-line ${citizensWin ? "good" : "bad"}`}>
-                {citizensWin
-                  ? "AGENTS WIN"
-                  : result.imposterGuessedCorrectly
-                  ? "IMPOSTER STEALS THE WIN"
-                  : "IMPOSTER WINS"}
-              </p>
+              <div className={`winner-banner ${
+                agentsWin ? "winner-agents" :
+                imposterStole ? "winner-steal" :
+                "winner-imposter"
+              }`}>
+                {agentsWin && "Agents Win"}
+                {imposterStole && "Imposter Steals the Win"}
+                {imposterWinsByEscape && "Imposter Wins"}
+              </div>
+
               {isHost ? (
-                <button type="button" className="btn-primary" onClick={onPlayAgain}>
-                  Play Again
+                <button type="button" className="btn btn-yellow" onClick={onPlayAgain}>
+                  Play again
                 </button>
               ) : (
-                <p className="subtitle waiting-line">// awaiting host to start next mission...</p>
+                <p className="waiting-light">waiting for host to start next mission...</p>
               )}
             </>
           )}
         </div>
       )}
-
-      {stage < 4 && (
-        <button
-          type="button"
-          className="btn-secondary skip-btn"
-          onClick={skipToEnd}
-        >
-          Skip ▸
-        </button>
-      )}
-    </section>
+    </div>
   );
 }

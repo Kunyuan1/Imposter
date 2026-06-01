@@ -1,50 +1,77 @@
 import React, { useState } from "react";
+import AnimalAvatar from "./AnimalAvatar";
 import { useToast } from "./Toast";
 
-export default function VoteScreen({ game, onVoteSubmit }) {
+export default function VoteScreen({ game, playerName, votedPlayers = [], hasVoted, animals, onVoteSubmit }) {
   const [selectedIndex, setSelectedIndex] = useState(null);
-  const currentPlayer = game.players[game.currentPlayerIndex];
   const showToast = useToast();
+  const myIndex = game.players.findIndex((p) => p === playerName);
 
   function handleSubmit() {
     if (selectedIndex === null) {
-      showToast("Mark a suspect before locking in your vote.");
+      showToast("Mark a suspect first.");
       return;
     }
     onVoteSubmit(selectedIndex);
-    setSelectedIndex(null);
+  }
+
+  if (hasVoted) {
+    const pending = game.players.filter((p) => !votedPlayers.includes(p));
+    return (
+      <div className="screen">
+        <h2 className="q-title">Vote locked in</h2>
+        <p className="section-label center">
+          {votedPlayers.length} of {game.players.length} voted
+        </p>
+
+        {pending.length > 0 ? (
+          <>
+            <p className="section-label">still deciding</p>
+            <div className="suspects">
+              {pending.map((p) => (
+                <div key={p} className="suspect" aria-disabled>
+                  <AnimalAvatar players={game.players} animals={animals} name={p} size="sm" />
+                  <span className="name">{p}</span>
+                  <span className="small muted">thinking...</span>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="helper-line">tallying the votes...</p>
+        )}
+      </div>
+    );
   }
 
   return (
-    <section className="card vote-card">
-      <h1 className="title-glow critical">EXILE VERDICT</h1>
-      <p className="subtitle">Pass the device to:</p>
-      <h2 className="player-highlight">{currentPlayer}</h2>
-      <p className="subtitle">Who do you think the imposter is?</p>
+    <div className="screen">
+      <h2 className="q-title">Who's the mole?</h2>
+      <p className="small center muted">pick your suspect and lock in</p>
 
-      <div className="suspect-list">
-        {game.players.map((player, index) => (
-          index !== game.currentPlayerIndex && (
+      <div className="suspects">
+        {game.players.map((p, i) => (
+          i !== myIndex && (
             <button
-              key={index}
+              key={p}
               type="button"
-              className={`suspect-row ${selectedIndex === index ? "targeted" : ""}`}
-              onClick={() => setSelectedIndex(index)}
+              className={`suspect ${selectedIndex === i ? "selected" : ""}`}
+              onClick={() => setSelectedIndex(i)}
             >
-              <span className="target-scope">⊙</span>
-              <span className="suspect-name">{player}</span>
+              <AnimalAvatar players={game.players} animals={animals} name={p} size="sm" />
+              <span className="name">{p}</span>
             </button>
           )
         ))}
       </div>
 
-      <button
-        type="button"
-        className="btn-primary danger pulse"
-        onClick={handleSubmit}
-      >
-        LOCK IN VOTE
+      <button type="button" className="btn btn-purple" onClick={handleSubmit}>
+        Lock in vote
       </button>
-    </section>
+
+      <p className="tiny center muted">
+        {votedPlayers.length} of {game.players.length} voted
+      </p>
+    </div>
   );
 }
