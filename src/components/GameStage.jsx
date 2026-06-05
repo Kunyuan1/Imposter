@@ -1,25 +1,22 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { animalFor } from "../utils/animals";
 import { seatsFor } from "../utils/seats";
 
-/**
- * Always-on background scene. Stays mounted for the entire game so phase
- * transitions don't unmount the table.
- *
- * Each seat is rendered as two independently-positioned elements:
- *   - .seat-wrap (the avatar disc) — its CENTER is anchored at
- *     (seat.left, seat.top). This is the coord that any overlay accent
- *     (glow, tap target) also targets, so they line up on the disc.
- *   - .seat-name — absolutely positioned below the disc, so the disc's
- *     center is unaffected by the name's presence.
- *
- * Never renders the wolf — every seat shows the player's chosen animal.
- */
-export default function GameStage({ players = [], host = "", animals = {}, exiled = null }) {
+export default function GameStage({ players = [], host = "", animals = {}, exiled = null, clues = [], showClues = false }) {
   const seats = seatsFor(players.length);
+  const [logOpen, setLogOpen] = useState(false);
+
+  // Auto-open the clue log when entering majorityVote phase
+  useEffect(() => {
+    if (showClues) {
+      setLogOpen(true);
+    } else {
+      setLogOpen(false);
+    }
+  }, [showClues]);
 
   return (
-    <div className="game-stage" aria-hidden="true">
+    <div className="game-stage">
       <div className="stage-floor" />
 
       <div className="lamp-cord" />
@@ -30,6 +27,55 @@ export default function GameStage({ players = [], host = "", animals = {}, exile
       <div className="table-side" />
       <div className="table-top" />
       <div className="table-felt" />
+
+      {showClues && (
+        <button
+          className="table-paper"
+          aria-label="View clue log"
+          onClick={() => setLogOpen(true)}
+        >
+          <span className="table-paper-label">clues</span>
+          <div className="table-paper-line" />
+          <div className="table-paper-line" />
+          <div className="table-paper-line" />
+        </button>
+      )}
+
+      {logOpen && (
+        <div className="paper-modal-backdrop" onClick={() => setLogOpen(false)}>
+          <div className="paper-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="paper-modal-header">
+              <span className="paper-modal-title">📋 Clue Log</span>
+              <button className="paper-modal-close" onClick={() => setLogOpen(false)}>✕</button>
+            </div>
+            <div className="paper-modal-body">
+              {clues.length === 0 ? (
+                <p className="paper-modal-empty">No clues yet.</p>
+              ) : (
+                clues.map((c, i) => {
+                  const { emoji, tint } = animalFor(players, c.player, animals);
+                  const isSilence = c.timedOut || c.clue === "— silence —";
+                  return (
+                    <div key={i} className="paper-modal-row">
+                      <div className="paper-modal-avatar" style={{ background: tint }}>
+                        <span>{emoji}</span>
+                      </div>
+                      <div className="paper-modal-text">
+                        <span className="paper-modal-name">{c.player}</span>
+                        {isSilence ? (
+                          <span className="paper-modal-silence">— silence —</span>
+                        ) : (
+                          <span className="paper-modal-clue">"{c.clue}"</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="table-deck">
         <div className="deck-card" />
@@ -44,13 +90,9 @@ export default function GameStage({ players = [], host = "", animals = {}, exile
 
         return (
           <React.Fragment key={name}>
-            {/* Disc wrap: centered on the seat coord */}
             <div
               className="seat-wrap"
-              style={{
-                left: `${seat.left}%`,
-                top: `${seat.top}%`,
-              }}
+              style={{ left: `${seat.left}%`, top: `${seat.top}%` }}
             >
               <div
                 className={`seat-disc ${isExiled ? "seat-exiled" : ""}`}
@@ -65,8 +107,6 @@ export default function GameStage({ players = [], host = "", animals = {}, exile
                 {name === host && <span className="seat-crown">👑</span>}
               </div>
             </div>
-
-            {/* Name: positioned just below the disc */}
             <span
               className="seat-name"
               style={{

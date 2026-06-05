@@ -3,28 +3,19 @@ import { seatsFor } from "../utils/seats";
 import { animalFor, WOLF } from "../utils/animals";
 import { useToast } from "./Toast";
 
-/**
- * Switches its content based on game phase. Sits above <GameStage /> and
- * uses the same seat coordinates so any seat-anchored accents (glow,
- * bubbles, badges) line up perfectly over the table avatars.
- *
- * Two visual styles:
- *  - Light-chrome:  clue, majorityVote, vote — table center stays visible
- *  - Center-card:   roleReveal, result, imposterGuess — dim + floating card
- */
 export default function PhaseOverlay(props) {
   const { phase } = props;
 
   switch (phase) {
-    case "roleReveal":    return <RoleRevealOverlay {...props} />;
-    case "clue":          return <ClueOverlay {...props} />;
-    case "majorityVote":  return <MajorityOverlay {...props} />;
-    case "majorityResult":return <MajorityResultOverlay {...props} />;
-    case "vote":          return <VoteOverlay {...props} />;
-    case "tally":         return <TallyOverlay {...props} />;
-    case "imposterGuess": return <ImposterGuessOverlay {...props} />;
-    case "result":        return <ResultOverlay {...props} />;
-    default:              return null;
+    case "roleReveal":     return <RoleRevealOverlay {...props} />;
+    case "clue":           return <ClueOverlay {...props} />;
+    case "majorityVote":   return <MajorityOverlay {...props} />;
+    case "majorityResult": return <MajorityResultOverlay {...props} />;
+    case "vote":           return <VoteOverlay {...props} />;
+    case "tally":          return <TallyOverlay {...props} />;
+    case "imposterGuess":  return <ImposterGuessOverlay {...props} />;
+    case "result":         return <ResultOverlay {...props} />;
+    default:               return null;
   }
 }
 
@@ -71,12 +62,6 @@ function RoleRevealOverlay({ myRole, players, playerName, animals, roleConfirmed
 
 // ────────────────────────── Clue Phase ─────────────────────────
 
-/**
- * Pop-up window design. Dimmed table behind, two corner badges pinned
- * outside the window (timer top-left, keyword top-right), and a cream
- * card in the center with header / log / input. No more per-seat
- * speech bubbles — the log inside the window replaces them.
- */
 function ClueOverlay({ game, isMyTurn, animals, clueInput, setClueInput, onSubmitClue, myRole, playerName }) {
   const activeIdx = game.currentPlayerIndex ?? 0;
   const activeName = game.players[activeIdx];
@@ -84,7 +69,6 @@ function ClueOverlay({ game, isMyTurn, animals, clueInput, setClueInput, onSubmi
   const round = game.clueRound || 1;
   const submittedRef = useRef(false);
 
-  // Reset submitted-guard whenever a new turn starts
   useEffect(() => { submittedRef.current = false; }, [activeIdx]);
 
   const handleManualSubmit = () => {
@@ -99,14 +83,12 @@ function ClueOverlay({ game, isMyTurn, animals, clueInput, setClueInput, onSubmi
     onSubmitClue({ force: true });
   }, [onSubmitClue]);
 
-  // Active player still gets a yellow glow ring on their seat at the table
   const seats = seatsFor(game.players.length);
 
   return (
     <div className="overlay overlay-card">
       <div className="overlay-dim" />
 
-      {/* Active-player glow stays on the table (no per-seat bubbles anymore) */}
       {seats[activeIdx] && (
         <div
           className="seat-glow seat-glow-active"
@@ -119,10 +101,7 @@ function ClueOverlay({ game, isMyTurn, animals, clueInput, setClueInput, onSubmi
         />
       )}
 
-      {/* Corner: countdown orb (top-left, outside the window) */}
       <ClueTimerOrb endsAt={game.turnEndsAt} onExpire={handleExpire} />
-
-      {/* Corner: keyword badge (top-right, outside the window) */}
       <ClueKeywordBadge
         myRole={myRole}
         players={game.players}
@@ -130,9 +109,7 @@ function ClueOverlay({ game, isMyTurn, animals, clueInput, setClueInput, onSubmi
         playerName={playerName}
       />
 
-      {/* The clue window itself */}
       <div className="clue-window">
-        {/* Header */}
         <div className="clue-window-header">
           <div className="clue-window-header-row">
             <span className="clue-window-eyebrow">clue phase</span>
@@ -147,7 +124,6 @@ function ClueOverlay({ game, isMyTurn, animals, clueInput, setClueInput, onSubmi
           </p>
         </div>
 
-        {/* Clue log */}
         <div className="clue-window-log">
           <p className="clue-window-label">previous clues</p>
           {(!game.clues || game.clues.length === 0) ? (
@@ -175,7 +151,6 @@ function ClueOverlay({ game, isMyTurn, animals, clueInput, setClueInput, onSubmi
           )}
         </div>
 
-        {/* Input zone */}
         <div className="clue-window-input">
           {isMyTurn ? (
             <>
@@ -208,7 +183,6 @@ function ClueOverlay({ game, isMyTurn, animals, clueInput, setClueInput, onSubmi
   );
 }
 
-/** Inline 56px countdown orb — orange border, dark center, pulses red < 5s. */
 function ClueTimerOrb({ endsAt, onExpire }) {
   const TURN_SECONDS = 20;
   function remaining(end) {
@@ -245,7 +219,6 @@ function ClueTimerOrb({ endsAt, onExpire }) {
   );
 }
 
-/** Inline keyword badge — dark pill, animal + word for agents, "IMPOSTER" red for imposter. */
 function ClueKeywordBadge({ myRole, players, animals, playerName }) {
   if (!myRole) return null;
   const isImposter = myRole.role === "imposter";
@@ -320,14 +293,12 @@ function MajorityResultOverlay({ game }) {
   const yesPct = total ? (yesVotes / total) * 100 : 50;
   const noPct  = total ? (noVotes  / total) * 100 : 50;
 
-  // Bar widths animate from 50/50 → final on mount
   const [animated, setAnimated] = useState(false);
   useEffect(() => {
     const id = setTimeout(() => setAnimated(true), 60);
     return () => clearTimeout(id);
   }, []);
 
-  // Footer countdown
   const [secondsLeft, setSecondsLeft] = useState(Math.ceil(duration / 1000));
   useEffect(() => {
     const startedAt = Date.now();
@@ -389,9 +360,6 @@ function VoteOverlay({ game, animals, playerName, votedPlayers = [], hasVoted, o
   const [selectedIdx, setSelectedIdx] = useState(null);
   const showToast = useToast();
 
-  // We only know who has voted, not who they voted for (server keeps that
-  // secret to avoid leaking info mid-vote). So no per-suspect tallies.
-
   function tap(i) {
     if (hasVoted) return;
     if (i === myIndex) return;
@@ -428,7 +396,6 @@ function VoteOverlay({ game, animals, playerName, votedPlayers = [], hasVoted, o
 
         return (
           <React.Fragment key={i}>
-            {/* Tap target — fully covers the seat disc */}
             <button
               type="button"
               className={`seat-tap ${isMe ? "seat-tap-self" : ""} ${isSelected ? "seat-tap-selected" : ""}`}
@@ -458,7 +425,6 @@ function VoteOverlay({ game, animals, playerName, votedPlayers = [], hasVoted, o
                 className="seat-tag seat-tag-pick"
                 style={{
                   left: `${seat.left}%`,
-                  // Below the name (which sits at top + size/2 + 6, ~13px tall).
                   top: `calc(${seat.top}% + ${seat.size / 2 + 26}px)`,
                 }}
               >
@@ -561,7 +527,6 @@ function TallyOverlay({ game, players, animals }) {
   const allPlayers = (game?.players?.length ? game.players : players) || [];
   const tallyDurationMs = game?.tallyDurationMs || 3500;
 
-  // Build sorted rows (descending votes), then split into "with votes" and "zero"
   const rows = allPlayers
     .map((name, i) => ({ name, votes: Number(tally[i] || tally[String(i)] || 0) | 0 }))
     .sort((a, b) => b.votes - a.votes);
@@ -570,14 +535,12 @@ function TallyOverlay({ game, players, animals }) {
   const zeroVotes = rows.filter((r) => r.votes === 0);
   const maxVotes = withVotes.length ? withVotes[0].votes : 0;
 
-  // Animate bar widths from 0 → final on mount
   const [animated, setAnimated] = useState(false);
   useEffect(() => {
     const id = setTimeout(() => setAnimated(true), 60);
     return () => clearTimeout(id);
   }, []);
 
-  // Countdown for tie state (ticks each second until server advances)
   const [secondsLeft, setSecondsLeft] = useState(Math.ceil(tallyDurationMs / 1000));
   useEffect(() => {
     if (!isTie) return;

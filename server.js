@@ -37,15 +37,10 @@ function getRandomItem(items) {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-// Pick a uniformly-random index into `items` (0..items.length-1 inclusive).
-// Used for selections that MUST be unbiased — imposter assignment and the
-// random starting player for each clue round. No special-casing of host,
-// no filtering — every player has the same chance.
 function pickRandomIndex(items) {
   return Math.floor(Math.random() * items.length);
 }
 
-// Standard room_update payload — names + host + per-player animal choices.
 function roomUpdatePayload(room) {
   const animals = {};
   for (const p of room.players) {
@@ -65,11 +60,9 @@ const GRACE_MS = 1000;
 
 function startClueTurn(room) {
   if (room.clueTimer) clearTimeout(room.clueTimer);
-  room.turnEndsAt = Date.now() + CLUE_TURN_MS; // server-side enforcement only
+  room.turnEndsAt = Date.now() + CLUE_TURN_MS;
   room.clueTimer = setTimeout(() => autoAdvanceClue(room), CLUE_TURN_MS + GRACE_MS);
 
-  // Send a RELATIVE duration so clients aren't affected by clock skew.
-  // Each client computes its own endsAt = Date.now() + clueDurationMs on receipt.
   broadcast(room, {
     type: "phase_change",
     phase: "clue",
@@ -81,10 +74,6 @@ function startClueTurn(room) {
   });
 }
 
-// Begin a fresh clue round: clear the log, pick a RANDOM starting player
-// (no host preference, no carry-over from earlier rounds), bump the round
-// counter, and kick off the first turn. Use this for the initial round
-// AND every loop-back (majority "no", vote tie).
 function startNewClueRound(room) {
   if (!room.players || room.players.length === 0) return;
   room.clues = [];
@@ -99,14 +88,13 @@ function autoAdvanceClue(room) {
   const activePlayer = room.players[room.currentPlayerIndex];
   if (!activePlayer) return;
 
-  // Active player ran out of time and didn't send anything — record placeholder
   if (!room.clues.some((c) => c.player === activePlayer.name && c._roundIndex === room.clues.length)) {
     room.clues.push({ player: activePlayer.name, clue: "— silence —", timedOut: true });
   }
   advanceClueTurn(room);
 }
 
-// --- VOTE TALLY → REVEAL (with a short pause to let everyone read the bars) ---
+// --- VOTE TALLY → REVEAL ---
 const TALLY_WINNER_MS = 3500;
 const TALLY_TIE_MS    = 5000;
 
@@ -134,7 +122,6 @@ function showTallyThen(room, tally, finalAccused) {
   room.tallyTimer = setTimeout(() => {
     room.tallyTimer = null;
     if (isTie) {
-      // No one exiled — start a fresh clue round with a new random starter
       room.votes = {};
       startNewClueRound(room);
       return;
@@ -160,7 +147,7 @@ function showTallyThen(room, tally, finalAccused) {
   }, tallyMs);
 }
 
-// --- MAJORITY DECISION → quick yes/no result card, then advance ---
+// --- MAJORITY DECISION ---
 const MAJORITY_RESULT_MS = 2200;
 
 function showMajorityResultThen(room, yesVotes, noVotes, isMajorityYes) {
@@ -191,7 +178,6 @@ function showMajorityResultThen(room, yesVotes, noVotes, isMajorityYes) {
         players: room.players.map((p) => p.name),
       });
     } else {
-      // Not enough YES votes — back to the clues with a new random starter
       startNewClueRound(room);
     }
   }, MAJORITY_RESULT_MS);
@@ -203,9 +189,7 @@ function advanceClueTurn(room) {
     room.clueTimer = null;
   }
 
-  // The clue for the current player has already been pushed by the caller
-  // (submit_clue or autoAdvanceClue). Once every player has submitted, the
-  // round is done — regardless of where the random starting index was.
+  // All clues submitted — go straight to majority vote
   if (room.clues.length >= room.players.length) {
     room.phase = "majorityVote";
     broadcast(room, {
@@ -217,8 +201,6 @@ function advanceClueTurn(room) {
     return;
   }
 
-  // Continue clockwise around the table, wrapping at the end so we visit
-  // every seat starting from the random starting index.
   room.currentPlayerIndex = (room.currentPlayerIndex + 1) % room.players.length;
   startClueTurn(room);
 }
@@ -240,8 +222,6 @@ function startGame(room, chosenCategory) {
     ? chosenCategory
     : getRandomItem(categoryNames);
   const secretWord = getRandomItem(words[category]);
-  // Imposter is picked uniformly from ALL players (host included). Every
-  // player has an equal chance — no host bias.
   const imposterIndex = pickRandomIndex(room.players);
 
   room.gameStarted = true;
@@ -256,25 +236,14 @@ function startGame(room, chosenCategory) {
   room.majorityVotes = [];
   room.clueRound = 0;
 
-  // Send each player their role privately
   room.players.forEach((player, index) => {
     if (index === imposterIndex) {
-      send(player.ws, {
-        type: "role_assigned",
-        role: "imposter",
-        category,
-      });
+      send(player.ws, { type: "role_assigned", role: "imposter", category });
     } else {
-      send(player.ws, {
-        type: "role_assigned",
-        role: "innocent",
-        category,
-        secretWord,
-      });
+      send(player.ws, { type: "role_assigned", role: "innocent", category, secretWord });
     }
   });
 
-  // Tell everyone to move to role reveal screen
   broadcast(room, {
     type: "phase_change",
     phase: "roleReveal",
@@ -299,7 +268,6 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    // CREATE ROOM
     if (msg.type === "create") {
       const code = generateCode();
       currentPlayer = { name: msg.name, ws, animal: 0 };
@@ -317,51 +285,38 @@ wss.on("connection", (ws) => {
         votes: {},
       };
       rooms[code] = currentRoom;
-
-      console.log(`Room ${code} created by ${msg.name}`);
       send(ws, { type: "room_created", code });
       broadcast(currentRoom, roomUpdatePayload(currentRoom));
     }
 
-    // JOIN ROOM
     else if (msg.type === "join") {
       const room = rooms[msg.code];
       if (!room) { send(ws, { type: "error", message: "Room not found" }); return; }
       if (room.gameStarted) { send(ws, { type: "error", message: "Game already started" }); return; }
-
-      // Default new player to an animal index that matches their join order
-      // (so two players that never touch the picker still get distinct animals).
       currentPlayer = { name: msg.name, ws, animal: room.players.length % 8 };
       currentRoom = room;
       room.players.push(currentPlayer);
-
-      console.log(`${msg.name} joined room ${msg.code}`);
       send(ws, { type: "joined", code: msg.code });
       broadcast(currentRoom, roomUpdatePayload(currentRoom));
     }
 
-    // LEAVE ROOM — player explicitly bails out of the lobby
     else if (msg.type === "leave_room") {
       if (!currentRoom || !currentPlayer) return;
       const room = currentRoom;
       room.players = room.players.filter((p) => p !== currentPlayer);
-      console.log(`${currentPlayer.name} left room ${room.code}`);
-
       if (room.players.length === 0) {
         if (room.clueTimer) clearTimeout(room.clueTimer);
+        if (room.tallyTimer) clearTimeout(room.tallyTimer);
+        if (room.majorityResultTimer) clearTimeout(room.majorityResultTimer);
         delete rooms[room.code];
       } else {
-        if (room.host === currentPlayer.name) {
-          room.host = room.players[0].name;
-        }
+        if (room.host === currentPlayer.name) room.host = room.players[0].name;
         broadcast(room, roomUpdatePayload(room));
       }
-
       currentRoom = null;
       currentPlayer = null;
     }
 
-    // SET ANIMAL — lobby only
     else if (msg.type === "set_animal") {
       if (!currentRoom || !currentPlayer) return;
       if (currentRoom.gameStarted) return;
@@ -371,7 +326,6 @@ wss.on("connection", (ws) => {
       broadcast(currentRoom, roomUpdatePayload(currentRoom));
     }
 
-    // START GAME
     else if (msg.type === "start_game") {
       if (!currentRoom || currentRoom.host !== currentPlayer.name) return;
       if (currentRoom.players.length < 3) {
@@ -381,47 +335,31 @@ wss.on("connection", (ws) => {
       startGame(currentRoom, msg.category);
     }
 
-    // ROLE CONFIRMED (player has seen their role and passed the device)
     else if (msg.type === "role_confirmed") {
-        if (!currentRoom) return;
-
-        if (!currentRoom.confirmedRoles) currentRoom.confirmedRoles = new Set();
-        currentRoom.confirmedRoles.add(currentPlayer.name);
-
-        // Check if all players have confirmed
-        if (currentRoom.confirmedRoles.size >= currentRoom.players.length) {
-            currentRoom.confirmedRoles = new Set();
-            // Random starting player for the very first clue round
-            startNewClueRound(currentRoom);
-        } else {
-            // Still waiting for other players — do nothing
-        }
+      if (!currentRoom) return;
+      if (!currentRoom.confirmedRoles) currentRoom.confirmedRoles = new Set();
+      currentRoom.confirmedRoles.add(currentPlayer.name);
+      if (currentRoom.confirmedRoles.size >= currentRoom.players.length) {
+        currentRoom.confirmedRoles = new Set();
+        startNewClueRound(currentRoom);
+      }
     }
 
-    // SUBMIT CLUE
     else if (msg.type === "submit_clue") {
       if (!currentRoom) return;
-      // Only the active player can submit, and only once per turn
       const activeName = currentRoom.players[currentRoom.currentPlayerIndex]?.name;
       if (currentPlayer.name !== activeName) return;
-      // Ignore if a clue was already submitted this turn (e.g. duplicate from auto-submit + manual)
       const lastClue = currentRoom.clues[currentRoom.clues.length - 1];
-      if (lastClue && lastClue.player === activeName && lastClue._roundIndex === currentRoom.clues.length - 1) {
-        return;
-      }
-
+      if (lastClue && lastClue.player === activeName && lastClue._roundIndex === currentRoom.clues.length - 1) return;
       const text = (msg.clue ?? "").trim() || "— silence —";
       currentRoom.clues.push({ player: activeName, clue: text });
       advanceClueTurn(currentRoom);
     }
 
-    // MAJORITY VOTE DECISION
     else if (msg.type === "majority_decision") {
       if (!currentRoom) return;
-
       if (!currentRoom.majorityVotes) currentRoom.majorityVotes = [];
       currentRoom.majorityVotes.push(msg.decision === "yes");
-
       if (currentRoom.majorityVotes.length >= currentRoom.players.length) {
         const yesVotes = currentRoom.majorityVotes.filter(v => v === true).length;
         const noVotes  = currentRoom.majorityVotes.length - yesVotes;
@@ -431,44 +369,26 @@ wss.on("connection", (ws) => {
       }
     }
 
-    // CAST VOTE — simultaneous, server tallies once everyone has voted
     else if (msg.type === "cast_vote") {
       if (!currentRoom || currentRoom.phase !== "vote") return;
       const voterIndex = currentRoom.players.findIndex((p) => p.name === currentPlayer.name);
       if (voterIndex < 0) return;
-      // Ignore double-votes
       if (Object.prototype.hasOwnProperty.call(currentRoom.votes, voterIndex)) return;
-
       currentRoom.votes[voterIndex] = msg.accusedIndex;
-
-      // Broadcast who's voted so others see live progress
-      const votedNames = Object.keys(currentRoom.votes).map(
-        (i) => currentRoom.players[Number(i)].name
-      );
-      broadcast(currentRoom, {
-        type: "vote_update",
-        votedPlayers: votedNames,
-        totalPlayers: currentRoom.players.length,
-      });
-
-      // Wait for everyone before tallying
+      const votedNames = Object.keys(currentRoom.votes).map((i) => currentRoom.players[Number(i)].name);
+      broadcast(currentRoom, { type: "vote_update", votedPlayers: votedNames, totalPlayers: currentRoom.players.length });
       if (Object.keys(currentRoom.votes).length < currentRoom.players.length) return;
-
-      // Tally
       const tally = {};
       for (const voter in currentRoom.votes) {
         const accused = currentRoom.votes[voter];
         tally[accused] = (tally[accused] || 0) + 1;
       }
-
       const maxVotes = Math.max(...Object.values(tally));
       const leaders = Object.keys(tally).filter((i) => tally[i] === maxVotes).map(Number);
       const finalAccused = leaders.length === 1 ? leaders[0] : null;
-
       showTallyThen(currentRoom, tally, finalAccused);
     }
 
-    // IMPOSTER GUESS
     else if (msg.type === "imposter_guess") {
       if (!currentRoom) return;
       const correct = msg.guess.trim().toLowerCase() === currentRoom.secretWord.toLowerCase();
@@ -485,7 +405,6 @@ wss.on("connection", (ws) => {
       });
     }
 
-    // PLAY AGAIN
     else if (msg.type === "play_again") {
       if (!currentRoom || currentRoom.host !== currentPlayer.name) return;
       currentRoom.gameStarted = false;
@@ -501,8 +420,6 @@ wss.on("connection", (ws) => {
   ws.on("close", () => {
     if (!currentRoom) return;
     currentRoom.players = currentRoom.players.filter((p) => p !== currentPlayer);
-    console.log(`${currentPlayer?.name} disconnected`);
-
     if (currentRoom.players.length === 0) {
       if (currentRoom.clueTimer) clearTimeout(currentRoom.clueTimer);
       if (currentRoom.tallyTimer) clearTimeout(currentRoom.tallyTimer);
@@ -510,11 +427,7 @@ wss.on("connection", (ws) => {
       delete rooms[currentRoom.code];
       return;
     }
-
-    if (currentRoom.host === currentPlayer?.name) {
-      currentRoom.host = currentRoom.players[0].name;
-    }
-
+    if (currentRoom.host === currentPlayer?.name) currentRoom.host = currentRoom.players[0].name;
     broadcast(currentRoom, roomUpdatePayload(currentRoom));
   });
 });

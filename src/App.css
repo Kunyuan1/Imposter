@@ -398,45 +398,28 @@ select.input {
 
 .home-emoji-row {
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   gap: 14px;
   font-size: 36px;
   line-height: 1;
 }
 
-/* Disguise overlay: cat is being "replaced" by wolf */
 .disguise-slot {
-  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding-right: 28px; /* leave room for the absolutely-positioned wolf */
-}
-
-.disguise-cat {
-  opacity: 0.4;
-}
-
-.disguise-arrow {
-  font-size: 12px;
-  color: var(--color-red);
-  font-weight: 700;
-  line-height: 1;
+  gap: 0;
 }
 
 .disguise-wolf {
-  position: absolute;
-  right: -4px;
-  top: 50%;
-  transform: translateY(-50%);
+  position: relative;
+  display: inline-block;
   animation: wolfPulse 1.5s ease-in-out infinite;
-  transform-origin: center;
 }
 
 @keyframes wolfPulse {
-  0%, 100% { transform: translateY(-50%) scale(1); }
-  50%      { transform: translateY(-50%) scale(1.08); }
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.15); }
 }
 
 .home-title {
@@ -520,6 +503,12 @@ select.input {
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   padding: 4px 0 2px;
+}
+
+@media (min-width: 360px) {
+  .animal-picker {
+    grid-template-columns: repeat(5, 1fr);
+  }
 }
 
 .animal-pick {
@@ -984,9 +973,7 @@ button:active:not(:disabled),
   transition: transform 60ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
 }
 
-/* Card-style choices get a softer press + brightness dip
-   (vote choice cards on the Majority Vote screen, suspect rows on the
-   Exile Vote screen — they're button elements wrapping a whole card). */
+/* Card-style choices get a softer press + brightness dip */
 .choice-card:active:not(:disabled),
 .suspect:active:not([disabled]) {
   transform: scale(0.96);
@@ -1071,7 +1058,7 @@ button:active:not(:disabled),
   z-index: 1;
 }
 
-/* Round table — stacked ellipses for the 3D edge look */
+/* Round table */
 .table-shadow {
   position: absolute;
   left: 50%; top: 60%;
@@ -1139,9 +1126,7 @@ button:active:not(:disabled),
   transform: rotate(-8deg);
 }
 
-/* Seats — disc and name are independently positioned so the disc's
-   center anchors precisely at (seat.left, seat.top). Overlay accents
-   (glow, tap targets) use the same coords and line up exactly. */
+/* Seats */
 .seat-wrap {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -1218,8 +1203,6 @@ button:active:not(:disabled),
   position: absolute;
   top: 10px;
   left: 10px;
-  /* Intentionally no `right` — keeps the top-right corner free for the
-     role badge. Contents (pill, timer, top-stack) flow left-to-right. */
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1342,7 +1325,7 @@ button:active:not(:disabled),
   font-weight: 500;
 }
 
-/* Dim layer — for center-card overlays and vote phase */
+/* Dim layer */
 .overlay-dim {
   position: absolute;
   inset: 0;
@@ -1364,7 +1347,7 @@ button:active:not(:disabled),
   );
 }
 
-/* Seat-anchored accents (positioned with the same % coords as seats) */
+/* Seat-anchored accents */
 .seat-glow {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -1409,10 +1392,6 @@ button:active:not(:disabled),
 .seat-tap-self { cursor: default; }
 .seat-tap:disabled { cursor: default; }
 
-/* The global button:active rule replaces transform with scale(0.92), which
-   would knock seat-tap off its translate(-50%,-50%) centering and move the
-   element out from under the user's finger before mouseup fires (so the
-   click never lands). Preserve the centering while still scaling. */
 .seat-tap:active:not(:disabled) {
   transform: translate(-50%, -50%) scale(0.94);
   transition: transform 60ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
@@ -1464,7 +1443,6 @@ button:active:not(:disabled),
   to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
-/* Bubble tails (a tiny triangle pointing toward the seat) */
 .clue-bubble::after {
   content: "";
   position: absolute;
@@ -1473,14 +1451,12 @@ button:active:not(:disabled),
 }
 
 .bubble-below::after {
-  /* bubble sits below seat → tail points UP */
   top: -10px;
   border-bottom-color: var(--color-cream);
   border-top: 0;
 }
 
 .bubble-above::after {
-  /* bubble sits above seat → tail points DOWN */
   bottom: -10px;
   border-top-color: var(--color-cream);
   border-bottom: 0;
@@ -1510,7 +1486,7 @@ button:active:not(:disabled),
 }
 
 /* =========================================================
-   CENTER-CARD OVERLAYS — role reveal, result, imposter guess
+   CENTER-CARD OVERLAYS
    ========================================================= */
 
 .overlay-card { display: flex; align-items: center; justify-content: center; }
@@ -1819,8 +1795,6 @@ button:active:not(:disabled),
 }
 .skip-btn:hover { background: rgba(255, 255, 255, 0.14); color: #FFF; }
 
-/* Role badge re-positioning when on the stage — top-right, above overlay.
-   (Was bottom-right, but that overlapped the Send button on the clue input.) */
 .stage-wrap .role-badge {
   position: absolute;
   top: 12px;
@@ -1832,14 +1806,12 @@ button:active:not(:disabled),
   max-width: 180px;
 }
 
-/* Override the page-level "app-with-badge" top padding for stage layouts */
 .app-stage.app-with-badge { padding-top: 24px; }
 
 /* =========================================================
    CLUE PHASE — corner badges + pop-up window
    ========================================================= */
 
-/* Corner: countdown orb (top-left) */
 .clue-timer-orb {
   position: absolute;
   top: 14px;
@@ -1890,7 +1862,6 @@ button:active:not(:disabled),
   50%      { transform: scale(1.08); }
 }
 
-/* Corner: keyword badge (top-right) */
 .clue-keyword-badge {
   position: absolute;
   top: 14px;
@@ -1947,7 +1918,6 @@ button:active:not(:disabled),
 
 .clue-keyword-word.imposter { color: var(--color-red); }
 
-/* The clue pop-up window (centered) */
 .clue-window {
   position: relative;
   z-index: 16;
@@ -1962,7 +1932,6 @@ button:active:not(:disabled),
   animation: cardPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-/* Header */
 .clue-window-header {
   background: #F5ECD7;
   padding: 12px 16px 14px;
@@ -2008,7 +1977,6 @@ button:active:not(:disabled),
   color: var(--color-purple);
 }
 
-/* Log */
 .clue-window-log {
   padding: 12px 16px 10px;
   display: flex;
@@ -2094,7 +2062,6 @@ button:active:not(:disabled),
   font-style: italic;
 }
 
-/* Input zone */
 .clue-window-input {
   padding: 12px 16px 14px;
   border-top: 1px solid rgba(42, 37, 32, 0.08);
@@ -2166,7 +2133,6 @@ button:active:not(:disabled),
   color: var(--color-ink);
 }
 
-/* Mobile: keep the corner badges from crowding the window on small screens */
 @media (max-width: 380px) {
   .clue-keyword-badge { max-width: 160px; padding: 7px 10px 7px 8px; gap: 7px; }
   .clue-keyword-word { font-size: 13px; max-width: 110px; }
@@ -2175,8 +2141,7 @@ button:active:not(:disabled),
 }
 
 /* =========================================================
-   MAJORITY RESULT card (compact yes/no card between
-   majority vote and the next phase)
+   MAJORITY RESULT card
    ========================================================= */
 
 .majres-card {
@@ -2307,7 +2272,7 @@ button:active:not(:disabled),
 }
 
 /* =========================================================
-   VOTE TALLY card (center-card overlay, between vote and result)
+   VOTE TALLY card
    ========================================================= */
 
 .tally-card {
@@ -2522,11 +2487,371 @@ button:active:not(:disabled),
   text-align: center;
 }
 
-/* Mobile tweaks — make text on the table readable when stage is small */
 @media (max-width: 420px) {
   .seat-name { font-size: 10px; max-width: 70px; }
   .clue-bubble { font-size: 11px; max-width: 110px; }
   .top-pill { font-size: 11px; padding: 6px 11px; }
   .overlay-status { font-size: 12px; }
   .reveal-card, .result-card, .guess-overlay-card { width: 92%; }
+}
+
+/* ---------- Instructions ---------- */
+
+.instructions-toggle {
+  border: 1.5px solid var(--color-border-2);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: #FFF;
+}
+
+.btn-instructions-toggle {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink-light);
+  cursor: pointer;
+  text-align: left;
+}
+
+.btn-instructions-toggle:hover {
+  background: rgba(0, 0, 0, 0.02);
+  color: var(--color-ink);
+}
+
+.instructions-body {
+  border-top: 1px solid var(--color-border);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.instructions-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.instructions-emoji {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.instructions-step strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin-bottom: 2px;
+}
+
+.instructions-step p {
+  font-size: 12px;
+  color: var(--color-ink-light);
+  line-height: 1.5;
+}
+
+/* ---------- Clue Review ---------- */
+
+.clue-review-card {
+  position: relative;
+  z-index: 16;
+  width: 90%;
+  max-width: 340px;
+  padding: 20px;
+  border-radius: 18px;
+  background: #FDFAF4;
+  border: 1.5px solid var(--color-border-2);
+  box-shadow: 0 14px 44px -14px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: cardPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.clue-review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.clue-review-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-light);
+}
+
+.clue-review-timer {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  background: var(--color-navy);
+  color: #FFF;
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+}
+
+.clue-review-timer-value {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.clue-review-timer-label {
+  font-size: 10px;
+  color: rgba(255,255,255,0.6);
+}
+
+.clue-review-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.clue-review-subtitle {
+  font-size: 13px;
+  color: var(--color-ink-light);
+  margin: 0;
+}
+
+.clue-review-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.clue-review-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #FFF;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.clue-review-player {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-ink-light);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.clue-review-clue {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.clue-review-silence {
+  font-size: 13px;
+  color: var(--color-ink-light);
+  font-style: italic;
+}
+
+/* ---------- Table paper (clue log) ---------- */
+
+.table-paper {
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  transform: translate(-50%, -50%) rotate(-4deg);
+  z-index: 15;
+  width: 44px;
+  height: 54px;
+  background: #FFFEF5;
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 2px;
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.25), 3px 3px 0 rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 4px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  /* Fix inconsistent hitbox */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.table-paper:hover {
+  box-shadow: 3px 3px 10px rgba(0,0,0,0.3), 4px 4px 0 rgba(0,0,0,0.1);
+}
+
+.table-paper:active {
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.25), 3px 3px 0 rgba(0,0,0,0.08);
+}
+
+.table-paper-label {
+  font-family: var(--font);
+  font-size: 7px;
+  font-weight: 700;
+  color: rgba(0,0,0,0.4);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+  margin-bottom: 2px;
+  pointer-events: none;
+}
+
+.table-paper-line {
+  width: 70%;
+  height: 1.5px;
+  background: rgba(0,0,0,0.12);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.table-paper-line {
+  width: 70%;
+  height: 2px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 1px;
+}
+
+/* ---------- Paper modal (clue log popup) ---------- */
+
+.paper-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: rgba(10, 6, 20, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: overlayFade 0.2s ease both;
+}
+
+.paper-modal {
+  width: 88%;
+  max-width: 320px;
+  background: #FDFAF4;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px -12px rgba(0,0,0,0.6);
+  animation: cardPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.paper-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: #F5ECD7;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.paper-modal-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.paper-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  color: var(--color-ink-light);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.paper-modal-close:hover { background: rgba(0,0,0,0.06); color: var(--color-ink); }
+
+.paper-modal-body {
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.paper-modal-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.paper-modal-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,0.1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.paper-modal-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.paper-modal-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-ink-light);
+}
+
+.paper-modal-clue {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.paper-modal-silence {
+  font-size: 13px;
+  color: var(--color-ink-light);
+  font-style: italic;
+}
+
+.paper-modal-empty {
+  font-size: 13px;
+  color: var(--color-ink-light);
+  text-align: center;
+  padding: 12px 0;
+}
+
+.table-paper:active:not(:disabled) {
+  transform: translate(-50%, -50%) rotate(-4deg) !important;
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.25), 3px 3px 0 rgba(0,0,0,0.08) !important;
+  transition: none !important;
+}
+
+.paper-modal-round-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-light);
+  margin: 8px 0 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-border);
 }

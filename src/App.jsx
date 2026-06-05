@@ -76,8 +76,6 @@ function App() {
       }
 
       else if (newPhase === "clue") {
-        // Prefer the server's relative duration (clock-skew safe). Fall back
-        // to an absolute turnEndsAt if a legacy/unrestarted server sends one.
         let turnEndsAt = null;
         if (typeof rest.clueDurationMs === "number") {
           turnEndsAt = Date.now() + rest.clueDurationMs;
@@ -94,7 +92,6 @@ function App() {
       }
 
       else if (newPhase === "majorityResult") {
-        // Carries yesVotes / noVotes / isMajorityYes / majorityResultDurationMs
         setGame(rest);
         setPhase("majorityResult");
       }
@@ -107,7 +104,6 @@ function App() {
       }
 
       else if (newPhase === "tally") {
-        // Carries tally + (winner) accusedName + isTie + tallyDurationMs
         setGame(rest);
         setPhase("tally");
       }
@@ -207,7 +203,6 @@ function App() {
 
   function handleLeaveRoom() {
     sendMessage({ type: "leave_room" });
-    // Reset all lobby/game state back to a fresh "home" view
     setPhase("home");
     setRoomCode("");
     setPlayers([]);
@@ -226,7 +221,6 @@ function App() {
   const isMyTurn = game && game.players &&
     game.players[game.currentPlayerIndex] === playerName;
 
-  // All gameplay phases keep the stage mounted underneath the overlay
   const inGamePhase = ["roleReveal", "clue", "majorityVote", "majorityResult", "vote", "tally", "imposterGuess", "result"].includes(phase);
   const isHost = host === playerName;
 
@@ -235,16 +229,16 @@ function App() {
     phase === "home"  ? "app" :
     "app app-stage";
 
-  // Players list to use for avatar derivation across all in-game screens.
-  // game.players is authoritative once the game starts; before that, fall
-  // back to the lobby list.
   const allPlayers = (game && game.players) || players;
 
-  // Animate the exiled player's seat during tally (winner state) and result
   const exiledName =
     (phase === "tally" && !game?.isTie && game?.accusedName) ||
     (phase === "result" && result?.accusedName) ||
     null;
+
+  // Show the paper clue log on the table during and after clue phase
+  const showCluesOnTable = ["majorityVote"].includes(phase);
+  const tableClues = game?.clues || [];
 
   return (
     <main className={appClass}>
@@ -279,6 +273,8 @@ function App() {
             host={host}
             animals={playerAnimals}
             exiled={exiledName}
+            clues={tableClues}
+            showClues={showCluesOnTable}
           />
           <PhaseOverlay
             phase={phase}

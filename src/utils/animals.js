@@ -1,10 +1,9 @@
-// 8 animals, each with a pastel tint for its avatar background.
+// 13 animals, each with a pastel tint for its avatar background.
 //
 // `animalFor(players, name, animals)`:
 //   - If `animals[name]` is a valid index, return that animal (player's choice).
 //   - Otherwise fall back to deterministic-by-join-order assignment based on
-//     the player's index in the shared `players[]` array — so before anyone
-//     picks, every client still sees the same animal for the same player.
+//     the player's index in the shared `players[]` array.
 
 // Wolf is intentionally NOT in this list — it's reserved as the imposter
 // symbol only (see WOLF below).
@@ -12,11 +11,16 @@ export const ANIMALS = [
   { emoji: "🦊", tint: "#FCE6D5" },
   { emoji: "🐸", tint: "#E2F3D8" },
   { emoji: "🐻", tint: "#F2E4D2" },
-  { emoji: "🐱", tint: "#FDE2EA" },
+  { emoji: "🐱", tint: "#FFF0F5" },
   { emoji: "🦝", tint: "#E3DECB" },
   { emoji: "🦉", tint: "#E5DAF0" },
   { emoji: "🐧", tint: "#DDE9F4" },
   { emoji: "🦌", tint: "#F5E4D7" },
+  { emoji: "🐰", tint: "#FDE8F0" },
+  { emoji: "🐹", tint: "#FAE5D3" },
+  { emoji: "🐯", tint: "#FDF0D5" },
+  { emoji: "🦁", tint: "#FAE9C8" },
+  { emoji: "🐮", tint: "#E8F4E8" },
 ];
 
 export const WOLF = { emoji: "🐺", tint: "#FDECEC" }; // soft red tint
