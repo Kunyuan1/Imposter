@@ -321,7 +321,7 @@ wss.on("connection", (ws) => {
       if (!currentRoom || !currentPlayer) return;
       if (currentRoom.gameStarted) return;
       const idx = msg.index;
-      if (typeof idx !== "number" || idx < 0 || idx > 7) return;
+      if (typeof idx !== "number" || idx < 0 || idx > 12) return;
       currentPlayer.animal = idx;
       broadcast(currentRoom, roomUpdatePayload(currentRoom));
     }
