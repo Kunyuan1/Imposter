@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
-import { connect, sendMessage, disconnect } from "./game/socket";
+import { connect, sendMessage, disconnect, getAttempts, STATUS } from "./game/socket";
 import HomeScreen from "./components/HomeScreen";
 import LobbyScreen from "./components/LobbyScreen";
 import GameStage from "./components/GameStage";
@@ -26,30 +26,100 @@ function App() {
   const [votedPlayers, setVotedPlayers] = useState([]);
   const [hasVoted, setHasVoted] = useState(false);
   const [playerAnimals, setPlayerAnimals] = useState({});
+  const [connStatus, setConnStatus] = useState(STATUS.CONNECTING);
+  const [disconnected, setDisconnected] = useState([]);
+  const [connAttempts, setConnAttempts] = useState(0);
 
   const handleMessageRef = useRef(null);
+  // { code, token } for the seat we currently hold, kept in a ref so the
+  // socket's onopen callback always sees the latest value.
+  const sessionRef = useRef(null);
+
+  function rememberSession(code, token) {
+    sessionRef.current = code && token ? { code, token } : null;
+    try {
+      if (sessionRef.current) {
+        sessionStorage.setItem("imposter.session", JSON.stringify(sessionRef.current));
+      } else {
+        sessionStorage.removeItem("imposter.session");
+      }
+    } catch {
+      // Private mode or blocked storage — the in-memory ref still covers
+      // reconnects within this page load.
+    }
+  }
 
   useEffect(() => {
-    connect((msg) => handleMessageRef.current(msg));
+    try {
+      const saved = sessionStorage.getItem("imposter.session");
+      if (saved) sessionRef.current = JSON.parse(saved);
+    } catch {
+      sessionRef.current = null;
+    }
+
+    connect(
+      (msg) => handleMessageRef.current(msg),
+      (status) => {
+        setConnStatus(status);
+        setConnAttempts(getAttempts());
+      },
+      () => {
+        const s = sessionRef.current;
+        if (s?.code && s?.token) {
+          sendMessage({ type: "rejoin", code: s.code, token: s.token });
+        }
+      },
+    );
     return () => disconnect();
   }, []);
 
+  function resetToHome() {
+    setPhase("home");
+    setRoomCode("");
+    setPlayers([]);
+    setHost("");
+    setPlayerAnimals({});
+    setDisconnected([]);
+    setSelectedCategory("");
+    setGame(null);
+    setMyRole(null);
+    setResult(null);
+    setRoleConfirmed(false);
+    setVotedPlayers([]);
+    setHasVoted(false);
+  }
+
   function handleMessage(msg) {
-    console.log("Message received:", msg);
 
     if (msg.type === "room_created") {
+      rememberSession(msg.code, msg.token);
       setRoomCode(msg.code);
       setPhase("lobby");
     }
 
     else if (msg.type === "joined") {
+      rememberSession(msg.code, msg.token);
       setRoomCode(msg.code);
       setPhase("lobby");
+    }
+
+    else if (msg.type === "rejoined") {
+      rememberSession(msg.code, msg.token);
+      setRoomCode(msg.code);
+      setPlayerName(msg.name);
+      showToast("Reconnected — you're back in the game.");
+    }
+
+    else if (msg.type === "rejoin_failed") {
+      // The room ended or the seat was released while we were away.
+      rememberSession(null, null);
+      resetToHome();
     }
 
     else if (msg.type === "room_update") {
       setPlayers(msg.players);
       setHost(msg.host);
+      setDisconnected(msg.disconnected || []);
       if (msg.playerAnimals) setPlayerAnimals(msg.playerAnimals);
     }
 
@@ -136,6 +206,7 @@ function App() {
 
     else if (msg.type === "vote_update") {
       setVotedPlayers(msg.votedPlayers || []);
+      if (msg.youVoted) setHasVoted(true);
     }
 
     else if (msg.type === "error") {
@@ -146,23 +217,30 @@ function App() {
   handleMessageRef.current = handleMessage;
 
   // --- ACTIONS ---
+  // sendMessage returns false when the socket is down; without this the UI used
+  // to silently do nothing at all.
+  function send(msg) {
+    if (sendMessage(msg)) return true;
+    showToast("No connection to the server — reconnecting...");
+    return false;
+  }
+
   function handleCreateRoom(name) {
     setPlayerName(name);
-    sendMessage({ type: "create", name });
+    send({ type: "create", name });
   }
 
   function handleJoinRoom(name, code) {
     setPlayerName(name);
-    sendMessage({ type: "join", name, code });
+    send({ type: "join", name, code });
   }
 
   function handleStartGame() {
-    sendMessage({ type: "start_game", category: selectedCategory });
+    send({ type: "start_game", category: selectedCategory });
   }
 
   function handleRoleConfirmed() {
-    setRoleConfirmed(true);
-    sendMessage({ type: "role_confirmed" });
+    if (send({ type: "role_confirmed" })) setRoleConfirmed(true);
   }
 
   function handleSubmitClue(opts = {}) {
@@ -171,26 +249,24 @@ function App() {
       showToast("Transmission empty — submit a clue to proceed.");
       return;
     }
-    sendMessage({ type: "submit_clue", clue: text });
-    setClueInput("");
+    if (send({ type: "submit_clue", clue: text })) setClueInput("");
   }
 
   function handleMajorityDecision(isMajorityYes) {
-    sendMessage({ type: "majority_decision", decision: isMajorityYes ? "yes" : "no" });
+    send({ type: "majority_decision", decision: isMajorityYes ? "yes" : "no" });
   }
 
   function handleCastVote(accusedIndex) {
     if (hasVoted) return;
-    setHasVoted(true);
-    sendMessage({ type: "cast_vote", accusedIndex });
+    if (send({ type: "cast_vote", accusedIndex })) setHasVoted(true);
   }
 
   function handleImposterGuess(guess) {
-    sendMessage({ type: "imposter_guess", guess });
+    send({ type: "imposter_guess", guess });
   }
 
   function handlePlayAgain() {
-    sendMessage({ type: "play_again" });
+    send({ type: "play_again" });
   }
 
   function handleImposterGuessButton() {
@@ -198,23 +274,13 @@ function App() {
   }
 
   function handleChangeAnimal(index) {
-    sendMessage({ type: "set_animal", index });
+    send({ type: "set_animal", index });
   }
 
   function handleLeaveRoom() {
-    sendMessage({ type: "leave_room" });
-    setPhase("home");
-    setRoomCode("");
-    setPlayers([]);
-    setHost("");
-    setPlayerAnimals({});
-    setSelectedCategory("");
-    setGame(null);
-    setMyRole(null);
-    setResult(null);
-    setRoleConfirmed(false);
-    setVotedPlayers([]);
-    setHasVoted(false);
+    send({ type: "leave_room" });
+    rememberSession(null, null);
+    resetToHome();
   }
 
   // --- RENDER ---
@@ -247,6 +313,8 @@ function App() {
         <HomeScreen
           onCreateRoom={handleCreateRoom}
           onJoinRoom={handleJoinRoom}
+          connStatus={connStatus}
+          connAttempts={connAttempts}
         />
       )}
 
@@ -272,6 +340,7 @@ function App() {
             players={allPlayers}
             host={host}
             animals={playerAnimals}
+            disconnected={disconnected}
             exiled={exiledName}
             clues={tableClues}
             showClues={showCluesOnTable}
