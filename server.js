@@ -450,6 +450,32 @@ function removePlayer(room, player) {
   resyncPhase(room);
 }
 
+// A player is gone, either because their socket closed or because the page told
+// us on its way out. Holding the seat is the mid-game behaviour; in the lobby
+// there is nothing worth keeping.
+function handleDeparture(room, player) {
+  if (!room.gameStarted) {
+    removePlayer(room, player);
+    return;
+  }
+  if (player.connected === false) return;   // already counted as away
+
+  player.connected = false;
+  broadcast(room, roomUpdatePayload(room));
+  // Whatever the table was waiting on, it is no longer waiting on them.
+  resyncPhase(room, { restartClueTurn: false });
+
+  if (player.graceTimer) clearTimeout(player.graceTimer);
+  player.graceTimer = setTimeout(() => {
+    player.graceTimer = null;
+    try {
+      removePlayer(room, player);
+    } catch (err) {
+      console.error("[grace] cleanup failed:", err);
+    }
+  }, REJOIN_GRACE_MS);
+}
+
 // A phase waiting on "everyone" may now be satisfied, either because the roster
 // shrank or because someone dropped and no longer counts.
 function resyncPhase(room, { restartClueTurn = true } = {}) {
@@ -647,6 +673,18 @@ wss.on("connection", (ws) => {
       console.log(`${player.name} rejoined ${room.code}`);
     }
 
+    else if (msg.type === "going_away") {
+      // Sent by the page as it unloads. A proxy can sit on the TCP close for
+      // many seconds (Render takes ~10), so this data frame is what actually
+      // tells the table someone stepped out.
+      if (!currentRoom || !currentPlayer) return;
+      const room = currentRoom;
+      const player = currentPlayer;
+      currentRoom = null;
+      currentPlayer = null;
+      if (player.ws === ws) handleDeparture(room, player);
+    }
+
     else if (msg.type === "leave_room") {
       if (!currentRoom || !currentPlayer) return;
       removePlayer(currentRoom, currentPlayer);
@@ -793,23 +831,7 @@ wss.on("connection", (ws) => {
     if (player.ws !== ws) return;
 
     try {
-      if (!room.gameStarted) {
-        removePlayer(room, player);
-        return;
-      }
-      // Mid-game: hold the seat so a refresh or a dropped phone can come back.
-      player.connected = false;
-      broadcast(room, roomUpdatePayload(room));
-      // Whatever the table was waiting on, it is no longer waiting on them.
-      resyncPhase(room, { restartClueTurn: false });
-      player.graceTimer = setTimeout(() => {
-        player.graceTimer = null;
-        try {
-          removePlayer(room, player);
-        } catch (err) {
-          console.error("[grace] cleanup failed:", err);
-        }
-      }, REJOIN_GRACE_MS);
+      handleDeparture(room, player);
     } catch (err) {
       console.error("[close] cleanup failed:", err);
     }

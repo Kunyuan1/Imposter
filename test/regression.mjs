@@ -382,6 +382,29 @@ console.log("\nTEST 13 — avatar selection covers all 13 animals");
   await wait(200);
 }
 
+console.log("\nTEST 14 — going_away marks a player away without waiting on the socket");
+{
+  const { ps } = await makeRoom(["P1", "P2", "P3"]);
+  await toClue(ps);
+  // Socket stays open, exactly as it would while a page is still unloading.
+  send(ps[1], { type: "going_away" });
+  const seen = await until(
+    () => (last(ps[0], "room_update").disconnected || []).includes("P2"), 2000);
+  ok("marked away from the message alone", seen);
+  ok("socket deliberately still open", ps[1].ws.readyState === 1);
+  ok("seat still held", last(ps[0], "room_update").players.includes("P2"));
+  ok("game not aborted", !last(ps[0], "phase_change", "lobby"));
+
+  // The real close arriving later must not double-handle or throw.
+  ps[1].ws.close();
+  await wait(500);
+  ok("late close is harmless", ps[0].ws.readyState === 1);
+  ok("still just one player away",
+     (last(ps[0], "room_update").disconnected || []).length === 1);
+  ps.filter((p) => p !== ps[1]).forEach((p) => p.ws.close());
+  await wait(200);
+}
+
 console.log(`\n================  ${pass} passed, ${fail} failed  ================\n`);
 const crashes = serverErrors.join("").trim();
 if (crashes) {

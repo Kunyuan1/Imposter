@@ -24,6 +24,7 @@ let openHandler = null;
 let reconnectTimer = null;
 let attempts = 0;
 let closedByUs = false;
+let pageHideHandler = null;
 
 export const STATUS = {
   CONNECTING: "connecting",   // first attempt, nothing has failed yet
@@ -86,6 +87,24 @@ export function connect(onMessage, onStatus, onOpen) {
   messageHandler = onMessage;
   statusHandler = onStatus;
   openHandler = onOpen;
+
+  // Tell the server we are leaving before the socket dies: a hosting proxy can
+  // sit on the TCP close for many seconds (Render takes ~10), during which the
+  // table is still waiting on a player who has already closed the tab.
+  // "pagehide" is the reliable unload signal on mobile; "beforeunload" is not.
+  if (!pageHideHandler && typeof window !== "undefined") {
+    pageHideHandler = () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(JSON.stringify({ type: "going_away" }));
+        } catch {
+          // Nothing useful to do while the page is being torn down.
+        }
+      }
+    };
+    window.addEventListener("pagehide", pageHideHandler);
+  }
+
   closedByUs = false;
   attempts = 0;
   open();
@@ -108,6 +127,10 @@ export function sendMessage(msg) {
 
 export function disconnect() {
   closedByUs = true;
+  if (pageHideHandler && typeof window !== "undefined") {
+    window.removeEventListener("pagehide", pageHideHandler);
+    pageHideHandler = null;
+  }
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
