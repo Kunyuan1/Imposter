@@ -4,6 +4,10 @@ A party game for 3+ players: everyone gets the same secret word except one
 imposter, who has to bluff their way through the clue rounds without being
 caught.
 
+Play it: <https://imposter-u6ak.onrender.com>. It runs on a free Render
+instance that sleeps when idle, so the first player in waits ~a minute while it
+wakes — the page says as much and keeps retrying.
+
 ## Running it locally
 
 Two processes — the game server and the web client.
