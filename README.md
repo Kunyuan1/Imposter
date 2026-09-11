@@ -46,9 +46,10 @@ deploy `dist/` as a static site:
 VITE_WS_URL=wss://your-server.onrender.com npm run build
 ```
 
-Note `wss://`, not `https://`. If your static host builds for you, set
-`VITE_WS_URL` in its build environment instead. It is baked into the bundle at
-build time, so changing it means rebuilding.
+Pasting the `https://` URL from your hosting dashboard is fine — the client
+rewrites `https://` to `wss://`, and accepts a bare hostname too. If your static
+host builds for you, set `VITE_WS_URL` in its build environment instead. It is
+baked into the bundle at build time, so changing it means rebuilding.
 
 ## Notes
 

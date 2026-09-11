@@ -1,4 +1,17 @@
-const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:1234";
+// Accept whatever form of the address someone pastes in. Copying the https://
+// URL straight out of a hosting dashboard is the easy mistake to make here, and
+// it fails silently, so normalise it rather than leaving a dead socket.
+function toWsUrl(raw) {
+  const value = (raw || "").trim().replace(/\/+$/, "");
+  if (!value) return "ws://localhost:1234";
+  if (/^wss?:\/\//i.test(value)) return value;
+  if (/^https:\/\//i.test(value)) return value.replace(/^https:/i, "wss:");
+  if (/^http:\/\//i.test(value)) return value.replace(/^http:/i, "ws:");
+  // A bare host, e.g. "imposter-server.onrender.com".
+  return `wss://${value}`;
+}
+
+const WS_URL = toWsUrl(import.meta.env.VITE_WS_URL);
 const DEBUG = import.meta.env.DEV;
 
 const RECONNECT_BASE_MS = 1000;
