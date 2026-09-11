@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export default function HomeScreen({ onCreateRoom, onJoinRoom }) {
+export default function HomeScreen({ onCreateRoom, onJoinRoom, connStatus = "open", connAttempts = 0 }) {
   const [name, setName] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [nameError, setNameError] = useState("");
@@ -45,6 +45,19 @@ export default function HomeScreen({ onCreateRoom, onJoinRoom }) {
       </div>
       <h1 className="home-title">Imposter</h1>
       <p className="home-subtitle">who's the mole on the team?</p>
+
+      {connStatus !== "open" && (
+        <div className={`conn-banner conn-${connStatus}`}>
+          {connStatus === "connecting"
+            ? "connecting to HQ..."
+            : connAttempts >= 3
+              // Free hosting sleeps when idle; the first connect wakes it and
+              // that genuinely can take up to a minute.
+              ? "waking HQ up — free servers nap, give it a minute..."
+              : "can't reach HQ — retrying..."}
+        </div>
+      )}
+
       <div className="thin-divider" />
 
       <div className="instructions-toggle">
@@ -103,7 +116,12 @@ export default function HomeScreen({ onCreateRoom, onJoinRoom }) {
         {nameError && <div className="input-error-msg">{nameError}</div>}
       </div>
 
-      <button type="button" className="btn btn-ink" onClick={handleCreate}>
+      <button
+        type="button"
+        className="btn btn-ink"
+        onClick={handleCreate}
+        disabled={connStatus !== "open"}
+      >
         Create room
       </button>
 
@@ -121,7 +139,12 @@ export default function HomeScreen({ onCreateRoom, onJoinRoom }) {
         {codeError && <div className="input-error-msg">{codeError}</div>}
       </div>
 
-      <button type="button" className="btn btn-outline" onClick={handleJoin}>
+      <button
+        type="button"
+        className="btn btn-outline"
+        onClick={handleJoin}
+        disabled={connStatus !== "open"}
+      >
         Join room
       </button>
     </div>

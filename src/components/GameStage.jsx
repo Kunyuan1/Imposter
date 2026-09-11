@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { animalFor } from "../utils/animals";
 import { seatsFor } from "../utils/seats";
 
-export default function GameStage({ players = [], host = "", animals = {}, exiled = null, clues = [], showClues = false }) {
+export default function GameStage({ players = [], host = "", animals = {}, exiled = null, clues = [], showClues = false, disconnected = [] }) {
   const seats = seatsFor(players.length);
   const [logOpen, setLogOpen] = useState(false);
 
@@ -87,6 +87,7 @@ export default function GameStage({ players = [], host = "", animals = {}, exile
         if (!name) return null;
         const { emoji, tint } = animalFor(players, name, animals);
         const isExiled = exiled === name;
+        const isAway = disconnected.includes(name);
 
         return (
           <React.Fragment key={name}>
@@ -95,7 +96,7 @@ export default function GameStage({ players = [], host = "", animals = {}, exile
               style={{ left: `${seat.left}%`, top: `${seat.top}%` }}
             >
               <div
-                className={`seat-disc ${isExiled ? "seat-exiled" : ""}`}
+                className={`seat-disc ${isExiled ? "seat-exiled" : ""} ${isAway ? "seat-away" : ""}`}
                 style={{
                   width: `${seat.size}px`,
                   height: `${seat.size}px`,
@@ -105,6 +106,7 @@ export default function GameStage({ players = [], host = "", animals = {}, exile
               >
                 <span>{emoji}</span>
                 {name === host && <span className="seat-crown">👑</span>}
+                {isAway && <span className="seat-away-badge" title="reconnecting">📵</span>}
               </div>
             </div>
             <span
