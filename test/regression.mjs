@@ -1,4 +1,5 @@
 import WebSocket from "ws";
+import clientWords from "../src/data/words.js";
 import { spawn } from "node:child_process";
 import process from "node:process";
 
@@ -403,6 +404,28 @@ console.log("\nTEST 14 — going_away marks a player away without waiting on the
      (last(ps[0], "room_update").disconnected || []).length === 1);
   ps.filter((p) => p !== ps[1]).forEach((p) => p.ws.close());
   await wait(200);
+}
+
+console.log("\nTEST 15 — every category the menu offers actually works");
+{
+  const categories = Object.keys(clientWords);
+  console.log(`  menu offers ${categories.length} categories`);
+  let mismatches = [];
+  for (const category of categories) {
+    const { ps } = await makeRoom([`H${category}`, `I${category}`, `J${category}`]);
+    send(ps[0], { type: "start_game", category });
+    await until(() => ps.every((p) => p.role !== null), 4000);
+    const assigned = (ps[0].role || {}).category;
+    if (assigned !== category) mismatches.push(`${category} -> ${assigned}`);
+    const word = ps.find((p) => p.role && p.role.role === "innocent").role.secretWord;
+    if (!clientWords[category].includes(word)) {
+      mismatches.push(`${category} gave "${word}", not in its list`);
+    }
+    ps.forEach((p) => p.ws.close());
+    await wait(150);
+  }
+  ok("every category returns itself and a word from its own list",
+     mismatches.length === 0, mismatches.join("; "));
 }
 
 console.log(`\n================  ${pass} passed, ${fail} failed  ================\n`);
