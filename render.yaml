@@ -3,7 +3,9 @@ services:
     name: imposter-server
     runtime: node
     plan: free
-    buildCommand: npm ci
+    # The server only needs "ws" at runtime; skipping devDependencies takes the
+    # install from ~100 packages to 4 and keeps the free-tier build quick.
+    buildCommand: npm ci --omit=dev
     startCommand: node server.js
     healthCheckPath: /health
     envVars:
